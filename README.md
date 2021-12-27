@@ -76,6 +76,9 @@ Params: `None`
 Params: `None`
 > Returns: A random joke as a JSON response
 
+### /topic (GET) {/topics} - Get a conversation starter topic
+Params: `None`
+> Returns: A conversation starter topic as a JSON response  
 
 ### Currently accepted colours:
 - Random
