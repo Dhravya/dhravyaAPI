@@ -30,6 +30,10 @@ dotenv.load_dotenv()
 app = Flask(__name__)
 TYPES_ACCEPTED = ["default", "colour", "color", "pattern"]
 
+from flask_autodoc.autodoc import Autodoc
+
+auto = Autodoc(app)
+
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
 
 reddit = praw.Reddit(
@@ -56,9 +60,13 @@ def jsonify(indent=4, sort_keys=False, **kwargs):
 def index():
     return render_template("index.html")
 
+@app.route('/docs')
+def documentation():
+    return auto.html()
 
 @app.route("/8ball")
 @app.route("/eightball")
+@auto.doc()
 @limiter.exempt
 def eightball():
     answers = [
@@ -88,6 +96,7 @@ def eightball():
 
 @app.route("/qrcode")
 @app.route("/qr")
+@auto.doc()
 @limiter.limit("20 per minute")
 def qrcode_generator():
     query = request.args.get("query")
@@ -164,6 +173,7 @@ def qrcode_generator():
 
 @app.route("/meme")
 @app.route("/memes")
+@auto.doc()
 def send_single_meme():
 
     if request.args.get("subreddit"):
@@ -204,6 +214,7 @@ def send_single_meme():
 @app.route("/meme/<topic>")
 @app.route("/memes/<topic>")
 @limiter.limit("30 per minute")
+@auto.doc()
 def memes(topic):
     # Get a meme of the requested topic
     if not topic in topics_accepted:
@@ -431,6 +442,37 @@ def dog():
 
     dogs = os.listdir("/var/www/api/dhravyaAPI/dogs")
     return send_file("/var/www/api/dhravyaAPI/dogs/" + dogs[random.randrange(0, len(dogs))])
+
+@app.route('/cat')
+@app.route('/cats')
+def cat():
+    with open("/var/www/api/dhravyaAPI/data.json", "r") as f:
+        data = json.load(f)
+    f = data["total_dog_requests"] + 1
+    data["total_dog_requests"] = f
+    with open("/var/www/api/dhravyaAPI/data.json", "w") as f:
+        json.dump(data, f)
+
+    cats = os.listdir("/var/www/api/dhravyaAPI/cats")
+    return send_file("/var/www/api/dhravyaAPI/cats/" + cats[random.randrange(0, len(cats))])
+
+@app.route("/topic")
+@app.route("/topics")
+def topic():
+    with open("/var/www/api/dhravyaAPI/data.json", "r") as f:
+        data = json.load(f)
+    f = data["total_topic_requests"] + 1
+    data["total_topic_requests"] = f
+    with open("/var/www/api/dhravyaAPI/data.json", "w") as f:
+        json.dump(data, f)
+
+    """ Generates a conversation starter"""
+    with open("/var/www/api/dhravyaAPI/txt_files/topics.txt", "r", encoding="utf-8") as f:
+        # Get a random compliment
+        jokes = f.readlines()
+
+        return jsonify(**{"topic": jokes[random.randrange(0, len(jokes))][:-2]})
+
 
 if __name__ == "__main__":
     app.run(port=80)
