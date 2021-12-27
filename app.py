@@ -1,3 +1,6 @@
+import json
+from typing import Optional
+
 from fastapi import FastAPI
 import praw
 import random
@@ -5,9 +8,9 @@ import qrcode
 from qrcode.image import styles
 from qrcode.image.styledpil import StyledPilImage
 from qrcode.image.styles.moduledrawers import *
-import json
 from fastapi.responses import FileResponse
 import aiofiles
+from extras.qr_stuff import styles
 
 # Defining apps and configs.
 app = FastAPI()
@@ -54,8 +57,8 @@ async def eightball():
     }
 
 @app.get("/qrcode")
-async def qrcode(drawer, mask, query):
-    query = query
+async def qr_code(query: Optional[str] = None, drawer: Optional[str] = "1", mask: Optional[str] = "1"):
+
     if not query:
         return {
             "success": 0,
@@ -133,5 +136,5 @@ async def qrcode(drawer, mask, query):
                 "errormessage": f"Unexpected error: {e}"
             }
         }
-    img.save(f"/var/www/api/dhravyaAPI/qr_codes/{n}.png", "PNG")
-    return FileResponse(f"/var/www/api/dhravyaAPI/qr_codes/{n}.png")
+    img.save(f"./qr_codes/{n}.png", "PNG")
+    return FileResponse(f"./qr_codes/{n}.png")
