@@ -66,12 +66,12 @@ async def qrcode(drawer, mask, query):
     # if len(query) > 250 or len(query) < 1:
     #     return jsonify(**{"error": "Query must have between 1 and 250 characters."})
 
-    with open("/var/www/api/dhravyaAPI/data.json", "r") as f:
-        data = json.load(f)
-    f = data["total_qr_requests"] + 1
-    data["total_qr_requests"] = f
-    with open("/var/www/api/dhravyaAPI/data.json", "w") as f:
-        json.dump(data, f)
+    # with open("/var/www/api/dhravyaAPI/data.json", "r") as f:
+    #     data = json.load(f)
+    # f = data["total_qr_requests"] + 1
+    # data["total_qr_requests"] = f
+    # with open("/var/www/api/dhravyaAPI/data.json", "w") as f:
+    #     json.dump(data, f)
 
     n = random.randint(1, 5)
 
