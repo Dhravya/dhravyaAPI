@@ -23,6 +23,7 @@ from qrcode.image.styledpil import StyledPilImage
 
 from extras.qr_stuff import _styles
 from extras.meme_fetcher import get_meme, topics_accepted
+from extras.memegenerator import make_meme
 
 # Defining apps and configs.
 app = FastAPI()
@@ -32,8 +33,9 @@ FIGLET_FONTS = """3-d, 3x5, 5lineoblique, alphabet, banner3-D,
                     bubble, bulbhead, digital"""
 
 #!#################################################
-#* Unimportant stuff, testing, etc
+# * Unimportant stuff, testing, etc
 #!#################################################
+
 
 @app.get("/")
 async def test():
@@ -42,7 +44,7 @@ async def test():
 
 @app.get("/8ball")
 async def eightball():
-    
+
     answers = [
         "It is certain",
         "It is decidedly so",
@@ -68,9 +70,11 @@ async def eightball():
     await do_statistics("8ball")
     return {"success": 1, "data": {"answer": random.choice(answers)}}
 
+
 #!#################################################
-#* QR Code generator
+# * QR Code generator
 #!#################################################
+
 
 @app.get("/qrcode")
 async def qr_code(
@@ -79,7 +83,7 @@ async def qr_code(
     mask: Optional[str] = None,
     fg: Optional[str] = None,
     bg: Optional[str] = None,
-    ):
+):
 
     if not query:
         return {"success": 0, "data": {"errormessage": "You didn't give a query!"}}
@@ -123,10 +127,11 @@ async def qr_code(
     await do_statistics("qrcode")
     return FileResponse(f"./temp/qr_codes/{n}.png")
 
+
 #!#################################################
-#* Memes
+# * Memes
 #!#################################################
-@app.get("/meme/{topic}") 
+@app.get("/meme/{topic}")
 async def meme(topic: str):
     if not topic in topics_accepted:
         topic = topic + "memes"
@@ -163,9 +168,11 @@ async def single_meme():
                 await do_statistics("single_meme")
                 return StreamingResponse(io.BytesIO(meme_bytes), media_type="image/png")
 
+
 #!#################################################
-#* Joke, WYR, etc generators
+# * Joke, WYR, etc generators
 #!#################################################
+
 
 @app.get("/wyr")
 async def wyr():
@@ -210,9 +217,11 @@ async def topic():
     await do_statistics("topic")
     return {"success": 1, "data": {"Topic": topic}}
 
+
 #!#################################################
-#* ASCII
+# * ASCII
 #!#################################################
+
 
 @app.get("/ascii")
 async def ascii(text: Optional[str] = "No text provided", font: Optional[str] = ""):
@@ -226,7 +235,7 @@ async def ascii(text: Optional[str] = "No text provided", font: Optional[str] = 
                 "errormessage": f"Unexpected error: {e} Make sure your font is valid! {FIGLET_FONTS}"
             },
         }
-    
+
     await do_statistics("ascii")
     return {
         "success": 1,
@@ -236,9 +245,11 @@ async def ascii(text: Optional[str] = "No text provided", font: Optional[str] = 
         },
     }
 
+
 #!#################################################
-#* Use of other apis
+# * Use of other apis
 #!#################################################
+
 
 @app.get("/songinfo")
 async def song_info(song: str):
@@ -258,12 +269,13 @@ async def song_info(song: str):
                     },
                 }
             data = await resp.json()
-        
+
         await do_statistics("song_info")
         return data
 
+
 @app.get("/mcstatus")
-async def mcstatus(host: str, port:str = None):
+async def mcstatus(host: str, port: str = None):
     """Returns the status of a minecraft server"""
     if not port:
         port = 25565
@@ -273,11 +285,9 @@ async def mcstatus(host: str, port:str = None):
     except Exception as e:
         return {
             "success": 0,
-            "data": {
-                "errormessage": f"Unexpected error: {e}"
-            },
+            "data": {"errormessage": f"Unexpected error: {e}"},
         }
-    
+
     await do_statistics("mcstatus")
     return {
         "success": 1,
@@ -285,9 +295,10 @@ async def mcstatus(host: str, port:str = None):
             "host": host,
             "port": port,
             "online": status.players.online,
-            "max": status.players.max
+            "max": status.players.max,
         },
     }
+
 
 @app.get("/bored")
 async def bored():
@@ -304,14 +315,12 @@ async def bored():
             data = await resp.json()
 
     await do_statistics("bored")
-    return {
-        "success": 1,
-        "data": data
-    }
+    return {"success": 1, "data": data}
+
 
 @app.get("/numberfact/{number:int}")
 async def numberfact(number):
-    
+
     """Returns a random number fact"""
     async with aiohttp.ClientSession() as session:
         async with session.get(f"http://numbersapi.com/{number}") as resp:
@@ -332,10 +341,8 @@ async def numberfact(number):
                 }
 
     await do_statistics("numberfact")
-    return {
-        "success": 1,
-        "data": data
-    }
+    return {"success": 1, "data": data}
+
 
 @app.get("/randomuser")
 async def randomuser():
@@ -352,13 +359,11 @@ async def randomuser():
             data = await resp.json()
 
     await do_statistics("randomuser")
-    return {
-        "success": 1,
-        "data": data["results"][0]
-    }
+    return {"success": 1, "data": data["results"][0]}
 
 
 #! kinda Secret google endpoints
+
 
 @app.get("/autofill")
 async def autofill(query: str):
@@ -369,7 +374,7 @@ async def autofill(query: str):
     BASE_URL = "https://suggestqueries.google.com/complete/search"
     async with aiohttp.ClientSession() as session:
         async with session.get(
-            BASE_URL, params={"client": "firefox", "q": query, "hl":"en"}
+            BASE_URL, params={"client": "firefox", "q": query, "hl": "en"}
         ) as resp:
             if resp.status != 200:
                 return {
@@ -385,35 +390,40 @@ async def autofill(query: str):
             data = data[:10]
 
     await do_statistics("autofill")
-    return {
-        "success": 1,
-        "data": data
-    }
+    return {"success": 1, "data": data}
 
 
 #!#################################################
-#* Image providers and image processing
+# * Image providers and image processing
 #!#################################################
+
 
 @app.get("/dog")
 async def dog():
     await do_statistics("dog")
     pass
 
+
 @app.get("/cat")
 async def cat():
     await do_statistics("cat")
     pass
 
+@app.get("/create_meme")
+async def create_meme(top: str, bottom: str, image: str):
+    make_meme(top, bottom, image)
+    await do_statistics("create_meme")
+    make_meme(top, bottom, image)
+
 #!#################################################
-#* Undocumented, for personal use
+# * Undocumented, for personal use
 #!#################################################
+
 
 @app.get("/stats")
 async def stats():
     with open("statistics.json", "r") as f:
         statistics = json.load(f)
-    
+
     await do_statistics("stats")
     return {"success": 1, "data": {"statistics": statistics}}
-
