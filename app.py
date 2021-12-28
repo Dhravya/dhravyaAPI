@@ -1,16 +1,21 @@
 import json
 from typing import Optional
+import aiofiles
+import aiohttp
+import random
+import io
 
 from fastapi import FastAPI
+from fastapi.responses import FileResponse, StreamingResponse
 import praw
-import random
+
 import qrcode
 from qrcode.image import styles
 from qrcode.image.styledpil import StyledPilImage
 from qrcode.image.styles.moduledrawers import *
-from fastapi.responses import FileResponse
-import aiofiles
+
 from extras.qr_stuff import styles
+from extras.meme_fetcher import get_meme, topics_accepted
 
 # Defining apps and configs.
 app = FastAPI()
@@ -66,15 +71,6 @@ async def qr_code(query: Optional[str] = None, drawer: Optional[str] = "1", mask
                 "errormessage": "You didn't give a query!"
             }
         }
-    # if len(query) > 250 or len(query) < 1:
-    #     return jsonify(**{"error": "Query must have between 1 and 250 characters."})
-
-    # with open("/var/www/api/dhravyaAPI/data.json", "r") as f:
-    #     data = json.load(f)
-    # f = data["total_qr_requests"] + 1
-    # data["total_qr_requests"] = f
-    # with open("/var/www/api/dhravyaAPI/data.json", "w") as f:
-    #     json.dump(data, f)
 
     n = random.randint(1, 5)
 
@@ -138,3 +134,53 @@ async def qr_code(query: Optional[str] = None, drawer: Optional[str] = "1", mask
         }
     img.save(f"./qr_codes/{n}.png", "PNG")
     return FileResponse(f"./qr_codes/{n}.png")
+
+
+@app.get("/stats")
+async def stats():
+    with open("statistics.json", "r") as f:
+        statistics = json.load(f)
+    return {
+        "success": 1,
+        "data": {
+            "statistics": statistics
+        }
+    }
+
+@app.get("/meme/{topic}")
+@app.get("/memes/{topic}")
+async def meme(topic: str):
+    if not topic in topics_accepted:
+        topic = topic + "memes"
+    
+    meme = await get_meme(topic)
+
+    return {
+        "success": 1,
+        "data": {
+            "url": meme["url"], 
+            "subreddit": meme["subreddit"],
+            "title": meme["title"],
+            "score": meme["score"],
+            "id": meme["id"],
+            "selftext" : meme["selftext"],
+            "is_nsfw": meme["over_18"]
+        }
+    }
+
+@app.get("/meme")
+async def meme():
+    meme = await get_meme("random")
+
+    async with aiohttp.ClientSession() as resp:
+        async with resp.get(meme["url"]) as resp:
+            if resp.status != 200:
+                return {
+                    "success": 0,
+                    "data": {
+                        "errormessage": "Couldn't fetch the meme!"
+                    }
+                }
+            else:
+                meme_bytes = await resp.read()
+                return StreamingResponse(io.BytesIO(meme_bytes), media_type="image/png")
