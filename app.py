@@ -1,11 +1,12 @@
 import json
+from re import L
 from typing import Optional
 import aiofiles
 import aiohttp
 import random
 import io
 import os
-import aiosignal
+from urllib.parse import quote_plus, urlencode
 import dotenv
 
 from extras.do_stats import do_statistics
@@ -125,8 +126,7 @@ async def qr_code(
 #!#################################################
 #* Memes
 #!#################################################
-@app.get("/meme/{topic}")
-@app.get("/memes/{topic}")
+@app.get("/meme/{topic}") 
 async def meme(topic: str):
     if not topic in topics_accepted:
         topic = topic + "memes"
@@ -168,7 +168,6 @@ async def single_meme():
 #!#################################################
 
 @app.get("/wyr")
-@app.get("/wouldyourather")
 async def wyr():
     """Returns a would you rather question"""
     async with aiofiles.open("./data/txt/wyr.txt", "r") as f:
@@ -242,8 +241,6 @@ async def ascii(text: Optional[str] = "No text provided", font: Optional[str] = 
 #!#################################################
 
 @app.get("/songinfo")
-@app.get("/song-info")
-@app.get("/song_info")
 async def song_info(song: str):
     GENIUS_API_URL = "https://api.genius.com"
     headers = {"Authorization": f'Bearer {os.environ["GENIUS_API_KEY"]}'}
@@ -292,49 +289,6 @@ async def mcstatus(host: str, port:str = None):
         },
     }
 
-@app.get("/age")
-@app.get("/predict_age")
-async def age(name: str = None):
-    """Returns the age of a person"""
-    if not name:
-        return {
-            "success": 0,
-            "data": {
-                "errormessage": "Please provide a name!",
-            },
-        }
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(
-                f"https://api.agify.io/?name={name}"
-            ) as resp:
-                if resp.status != 200:
-                    return {
-                        "success": 0,
-                        "data": {
-                            "errormessage": "Couldn't fetch the age!",
-                        },
-                    }
-                data = await resp.json()
-                name = data["name"]
-                age = data["age"]
-    except Exception as e:
-        return {
-            "success": 0,
-            "data": {
-                "errormessage": f"Unexpected error: {e}"
-            },
-        }
-    
-    await do_statistics("age")
-    return {
-        "success": 1,
-        "data": {
-            "name": name,
-            "age": age,
-        },
-    }
-
 @app.get("/bored")
 async def bored():
     """Returns a bored fact"""
@@ -356,8 +310,6 @@ async def bored():
     }
 
 @app.get("/numberfact/{number:int}")
-@app.get("/number/{number:int}")
-@app.get("/number-fact/{number:int}")
 async def numberfact(number):
     
     """Returns a random number fact"""
@@ -406,19 +358,49 @@ async def randomuser():
     }
 
 
+#! kinda Secret google endpoints
+
+@app.get("/autofill")
+async def autofill(query: str):
+    # This “API” is a bit of a hack; it was only meant for use by
+    # Google’s own products. and hence it is undocumented.
+    # Attribution: https://shreyaschand.com/blog/2013/01/03/google-autocomplete-api/
+    # I’m not sure if this is the best way to do this, but it works.
+    BASE_URL = "https://suggestqueries.google.com/complete/search"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(
+            BASE_URL, params={"client": "firefox", "q": query, "hl":"en"}
+        ) as resp:
+            if resp.status != 200:
+                return {
+                    "success": 0,
+                    "data": {
+                        "errormessage": "Couldn't fetch the autofill!",
+                    },
+                }
+            response = await resp.text()
+            response = response.split("(")[0].split(")")[0]
+            response = json.loads(response)
+            data = response[1]
+            data = data[:10]
+
+    await do_statistics("autofill")
+    return {
+        "success": 1,
+        "data": data
+    }
+
 
 #!#################################################
 #* Image providers and image processing
 #!#################################################
 
-@app.get("/dogs")
 @app.get("/dog")
 async def dog():
     await do_statistics("dog")
     pass
 
 @app.get("/cat")
-@app.get("/cats")
 async def cat():
     await do_statistics("cat")
     pass
