@@ -5,7 +5,10 @@ import aiohttp
 import random
 import io
 import os
+import aiosignal
 import dotenv
+
+from extras.do_stats import do_statistics
 
 dotenv.load_dotenv()
 
@@ -27,6 +30,9 @@ FIGLET_FONTS = """3-d, 3x5, 5lineoblique, alphabet, banner3-D,
                     doh, isometric1, letters, alligator, dotmatrix, 
                     bubble, bulbhead, digital"""
 
+#!#################################################
+#* Unimportant stuff, testing, etc
+#!#################################################
 
 @app.get("/")
 async def test():
@@ -35,6 +41,7 @@ async def test():
 
 @app.get("/8ball")
 async def eightball():
+    
     answers = [
         "It is certain",
         "It is decidedly so",
@@ -57,8 +64,12 @@ async def eightball():
         "Outlook not so good",
         "Very doubtful",
     ]
+    await do_statistics("8ball")
     return {"success": 1, "data": {"answer": random.choice(answers)}}
 
+#!#################################################
+#* QR Code generator
+#!#################################################
 
 @app.get("/qrcode")
 async def qr_code(
@@ -108,6 +119,7 @@ async def qr_code(
     except Exception as e:
         return {"success": 0, "data": {"errormessage": f"Unexpected error: {e}"}}
     img.save(f"./temp/qr_codes/{n}.png", "PNG")
+    await do_statistics("qrcode")
     return FileResponse(f"./temp/qr_codes/{n}.png")
 
 #!#################################################
@@ -120,7 +132,7 @@ async def meme(topic: str):
         topic = topic + "memes"
 
     meme = await get_meme(topic)
-
+    await do_statistics("meme")
     return {
         "success": 1,
         "data": {
@@ -148,6 +160,7 @@ async def single_meme():
                 }
             else:
                 meme_bytes = await resp.read()
+                await do_statistics("single_meme")
                 return StreamingResponse(io.BytesIO(meme_bytes), media_type="image/png")
 
 #!#################################################
@@ -162,6 +175,7 @@ async def wyr():
         data = await f.readlines()
     question = data[random.randrange(0, len(data))][:-2].split(" or ")
 
+    await do_statistics("wyr")
     return {"success": 1, "data": {"Would you rather": question}}
 
 
@@ -172,6 +186,7 @@ async def joke():
         data = await f.readlines()
     joke = data[random.randrange(0, len(data))][:-2]
 
+    await do_statistics("joke")
     return {"success": 1, "data": {"Joke": joke}}
 
 
@@ -182,6 +197,7 @@ async def compliment():
         data = await f.readlines()
     compliment = data[random.randrange(0, len(data))][:-2]
 
+    await do_statistics("compliment")
     return {"success": 1, "data": {"Compliment": compliment}}
 
 
@@ -192,6 +208,7 @@ async def topic():
         data = await f.readlines()
     topic = data[random.randrange(0, len(data))][:-2]
 
+    await do_statistics("topic")
     return {"success": 1, "data": {"Topic": topic}}
 
 #!#################################################
@@ -210,6 +227,8 @@ async def ascii(text: Optional[str] = "No text provided", font: Optional[str] = 
                 "errormessage": f"Unexpected error: {e} Make sure your font is valid! {FIGLET_FONTS}"
             },
         }
+    
+    await do_statistics("ascii")
     return {
         "success": 1,
         "data": {
@@ -242,6 +261,8 @@ async def song_info(song: str):
                     },
                 }
             data = await resp.json()
+        
+        await do_statistics("song_info")
         return data
 
 @app.get("/mcstatus")
@@ -260,6 +281,7 @@ async def mcstatus(host: str, port:str = None):
             },
         }
     
+    await do_statistics("mcstatus")
     return {
         "success": 1,
         "data": {
@@ -270,6 +292,121 @@ async def mcstatus(host: str, port:str = None):
         },
     }
 
+@app.get("/age")
+@app.get("/predict_age")
+async def age(name: str = None):
+    """Returns the age of a person"""
+    if not name:
+        return {
+            "success": 0,
+            "data": {
+                "errormessage": "Please provide a name!",
+            },
+        }
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                f"https://api.agify.io/?name={name}"
+            ) as resp:
+                if resp.status != 200:
+                    return {
+                        "success": 0,
+                        "data": {
+                            "errormessage": "Couldn't fetch the age!",
+                        },
+                    }
+                data = await resp.json()
+                name = data["name"]
+                age = data["age"]
+    except Exception as e:
+        return {
+            "success": 0,
+            "data": {
+                "errormessage": f"Unexpected error: {e}"
+            },
+        }
+    
+    await do_statistics("age")
+    return {
+        "success": 1,
+        "data": {
+            "name": name,
+            "age": age,
+        },
+    }
+
+@app.get("/bored")
+async def bored():
+    """Returns a bored fact"""
+    async with aiohttp.ClientSession() as session:
+        async with session.get("https://www.boredapi.com/api/activity") as resp:
+            if resp.status != 200:
+                return {
+                    "success": 0,
+                    "data": {
+                        "errormessage": "Couldn't fetch the bored fact!",
+                    },
+                }
+            data = await resp.json()
+
+    await do_statistics("bored")
+    return {
+        "success": 1,
+        "data": data
+    }
+
+@app.get("/numberfact/{number:int}")
+@app.get("/number/{number:int}")
+@app.get("/number-fact/{number:int}")
+async def numberfact(number):
+    
+    """Returns a random number fact"""
+    async with aiohttp.ClientSession() as session:
+        async with session.get(f"http://numbersapi.com/{number}") as resp:
+            if resp.status != 200:
+                return {
+                    "success": 0,
+                    "data": {
+                        "errormessage": "Couldn't fetch the number fact!",
+                    },
+                }
+            data = await resp.text()
+            if "(submit one to numbersapi at google mail!)" in data:
+                return {
+                    "success": 0,
+                    "data": {
+                        "errormessage": "Couldn't fetch the number fact!",
+                    },
+                }
+
+    await do_statistics("numberfact")
+    return {
+        "success": 1,
+        "data": data
+    }
+
+@app.get("/randomuser")
+async def randomuser():
+    """Returns a random user"""
+    async with aiohttp.ClientSession() as session:
+        async with session.get("https://randomuser.me/api/") as resp:
+            if resp.status != 200:
+                return {
+                    "success": 0,
+                    "data": {
+                        "errormessage": "Couldn't fetch the random user!",
+                    },
+                }
+            data = await resp.json()
+
+    await do_statistics("randomuser")
+    return {
+        "success": 1,
+        "data": data["results"][0]
+    }
+
+
+
 #!#################################################
 #* Image providers and image processing
 #!#################################################
@@ -277,11 +414,13 @@ async def mcstatus(host: str, port:str = None):
 @app.get("/dogs")
 @app.get("/dog")
 async def dog():
+    await do_statistics("dog")
     pass
 
 @app.get("/cat")
 @app.get("/cats")
 async def cat():
+    await do_statistics("cat")
     pass
 
 #!#################################################
@@ -292,5 +431,7 @@ async def cat():
 async def stats():
     with open("statistics.json", "r") as f:
         statistics = json.load(f)
+    
+    await do_statistics("stats")
     return {"success": 1, "data": {"statistics": statistics}}
 
