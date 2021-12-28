@@ -1,7 +1,6 @@
-from qrcode.image import styledpil, styles
+from qrcode.image import styles
 
-
-styles = {
+_styles = {
             "drawers": {
                 "1": styles.moduledrawers.SquareModuleDrawer(),
                 "2": styles.moduledrawers.GappedSquareModuleDrawer(),
