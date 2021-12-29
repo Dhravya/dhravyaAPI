@@ -14,7 +14,7 @@ from extras.do_stats import do_statistics
 dotenv.load_dotenv()
 
 from fastapi import FastAPI
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse, RedirectResponse
 
 from mcstatus import MinecraftServer
 import pyfiglet
@@ -40,7 +40,7 @@ FIGLET_FONTS = """3-d, 3x5, 5lineoblique, alphabet, banner3-D,
 
 @app.get("/")
 async def test():
-    return {"Hello": "World"}
+    return RedirectResponse("/docs")
 
 
 @app.get("/8ball")
