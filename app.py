@@ -437,7 +437,7 @@ async def create_meme(top: str, bottom: str, image: str= None):
 
 @app.get("/mealsome")
 async def meme_template_mealsome(me: str, alsome: str):
-    args = { me, alsome}
+    args = { alsome, me}
     await do_statistics("mealsome")
     meme = MemePy.MemeGenerator.get_meme_image_bytes("mealsome",args=args)
     return StreamingResponse(meme, media_type="image/png")
