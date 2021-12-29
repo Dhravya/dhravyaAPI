@@ -1,2 +1,6 @@
 fastapi
-praw
+memepy
+pyfiglet
+mcstatus
+qrcode
+Pillow

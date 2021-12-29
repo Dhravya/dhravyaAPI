@@ -20,6 +20,7 @@ from mcstatus import MinecraftServer
 import pyfiglet
 import qrcode
 from qrcode.image.styledpil import StyledPilImage
+import MemePy
 
 from extras.qr_stuff import _styles
 from extras.meme_fetcher import get_meme, topics_accepted
@@ -410,10 +411,52 @@ async def cat():
     pass
 
 @app.get("/create_meme")
-async def create_meme(top: str, bottom: str, image: str):
-    make_meme(top, bottom, image)
+async def create_meme(top: str, bottom: str, image: str= None):
+    if image in ["aliens", "sap", "successkid"]:
+        image = f"./data/images/{image}.jpg"
+    elif image is None:
+        image = "./data/images/successkid.jpg"
+    else:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(image) as resp:
+                if resp.status != 200:
+                    return {
+                        "success": 0,
+                        "data": {
+                            "errormessage": "Couldn't fetch the image!",
+                        },
+                    }
+                image = await resp.read()
+                async with aiofiles.open("./data/images/temp.jpg", "wb") as f:
+                    await f.write(image)
+                image = "./data/images/temp.jpg"
     await do_statistics("create_meme")
     make_meme(top, bottom, image)
+    return FileResponse("./temp.png")
+
+
+@app.get("/mealsome")
+async def meme_template_mealsome(me: str, alsome: str):
+    args = { me, alsome}
+    await do_statistics("mealsome")
+    meme = MemePy.MemeGenerator.get_meme_image_bytes("mealsome",args=args)
+    return StreamingResponse(meme, media_type="image/png")
+
+@app.get("/itsretarded")
+async def meme_template_itsretarded(text: str):
+    args = { text}
+    await do_statistics("itsretarded")
+    meme = MemePy.MemeGenerator.get_meme_image_bytes("itsretarded",args=args)
+    return StreamingResponse(meme, media_type="image/png")
+
+@app.get("/headache")
+async def meme_template_headache(text: str):
+    args = { text}
+    await do_statistics("headache")
+    meme = MemePy.MemeGenerator.get_meme_image_bytes("headache",args=args)
+    return StreamingResponse(meme, media_type="image/png")
+
+
 
 #!#################################################
 # * Undocumented, for personal use

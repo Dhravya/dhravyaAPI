@@ -11,5 +11,9 @@
     "qrcode": 2,
     "ascii": 1,
     "mcstatus": 1,
-    "autofill": 3
+    "autofill": 3,
+    "create_meme": 37,
+    "mealsome": 9,
+    "headache": 4,
+    "itsretarded": 2
 }
