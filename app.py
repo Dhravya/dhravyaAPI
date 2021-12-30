@@ -456,7 +456,47 @@ async def meme_template_headache(text: str):
     meme = MemePy.MemeGenerator.get_meme_image_bytes("headache",args=args)
     return StreamingResponse(meme, media_type="image/png")
 
+@app.get("/classnote")
+async def meme_template_classnote(text: str):
+    args = { text}
+    await do_statistics("itstime")
+    meme = MemePy.MemeGenerator.get_meme_image_bytes("classnote",args=args)
+    return StreamingResponse(meme, media_type="image/png")
 
+@app.get("/nutbutton")
+async def meme_template_nutbutton(text: str):
+    args = { text}
+    await do_statistics("nutbutton")
+    meme = MemePy.MemeGenerator.get_meme_image_bytes("nutbutton",args=args)
+    return StreamingResponse(meme, media_type="image/png")
+
+@app.get("/pills")
+async def meme_template_pills(text:str):
+    args = {text}
+    await do_statistics("pills")
+    meme = MemePy.MemeGenerator.get_meme_image_bytes("pills",args=args)
+    return StreamingResponse(meme, media_type="image/png")
+
+@app.get("/balloon")
+async def meme_template_balloon(text:str, person:str, stopper:str):
+    args = {text, person, stopper}
+    await do_statistics("balloon")
+    meme = MemePy.MemeGenerator.get_meme_image_bytes("balloon",args=args)
+    return StreamingResponse(meme, media_type="image/png")
+
+@app.get("/classy")
+async def meme_template_classy(upper:str, lower:str):
+    args = {upper, lower}
+    await do_statistics("classy")
+    meme = MemePy.MemeGenerator.get_meme_image_bytes("classy",args)
+    return StreamingResponse(meme, media_type="image/png")
+
+@app.get("/finally")
+async def meme_template_finally(text:str):
+    args = {text}
+    await do_statistics("finally")
+    meme = MemePy.MemeGenerator.get_meme_image_bytes("finally",args)
+    return StreamingResponse(meme, media_type="image/png")
 
 #!#################################################
 # * Undocumented, for personal use

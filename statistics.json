@@ -7,7 +7,7 @@
     "meme": 1,
     "stats": 1,
     "cat": 1,
-    "single_meme": 1,
+    "single_meme": 3,
     "qrcode": 2,
     "ascii": 1,
     "mcstatus": 1,
@@ -15,5 +15,11 @@
     "create_meme": 37,
     "mealsome": 9,
     "headache": 4,
-    "itsretarded": 2
+    "itsretarded": 2,
+    "itstime": 4,
+    "nutbutton": 3,
+    "pills": 3,
+    "balloon": 2,
+    "classy": 5,
+    "finally": 2
 }
