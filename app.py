@@ -1,15 +1,12 @@
 import json
-from re import L
 from typing import Optional
 import aiofiles
 import aiohttp
 import random
 import io
 import os
-from urllib.parse import quote_plus, urlencode
 import dotenv
 
-from extras.do_stats import do_statistics
 
 dotenv.load_dotenv()
 
@@ -25,6 +22,7 @@ import MemePy
 from extras.qr_stuff import _styles
 from extras.meme_fetcher import get_meme, topics_accepted
 from extras.memegenerator import make_meme
+from extras.do_stats import do_statistics
 
 # Defining apps and configs.
 app = FastAPI()
