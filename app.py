@@ -1,12 +1,17 @@
+"""
+Note to myself:
+! TO restart the api after edits:
+pkill gunicorn
+gunicorn app:app -w 1 -k uvicorn.workers.UvicornWorker -b "127.0.0.1:8000" --daemon
+"""
+
 import json
-from re import L
 from typing import Optional
 import aiofiles
 import aiohttp
 import random
 import io
 import os
-from urllib.parse import quote_plus, urlencode
 import dotenv
 
 from extras.do_stats import do_statistics
@@ -27,11 +32,53 @@ from extras.meme_fetcher import get_meme, topics_accepted
 from extras.memegenerator import make_meme
 
 # Defining apps and configs.
-app = FastAPI()
+
+description = """
+This is a simple API that is meant to "Do it all" for you.
+It will fetch a random meme from reddit, and generate a QR code with the URL, and much, much more!
+
+<hr>
+
+# Features
+- QR Code Generator
+- Meme fetcher
+- Minecraft Status Checker
+- Meme generator
+- Jokes, quotes, and other fun stuff
+- Ascii art generator
+- Song information fetcher
+- Use of secret internal google APIs for stuff like google search suggestions, and more soon!
+
+<hr>
+
+## If you think you have an idea to make the API better, please let me know!
+Join the Coding horizon discord server for help and support!
+https://discord.gg/rqhgqTqFbp
+"""
+
+app = FastAPI(
+    title="DhravyaAPI",
+    description=description,
+    contact={
+        "name": "Dhravya Shah",
+        "url": "https://dhravya.me",
+        "email": "dhravyashah@gmail.com",
+    },
+    version="2.0",
+    openapi_url="/v2/openapi.json",
+)
 
 FIGLET_FONTS = """3-d, 3x5, 5lineoblique, alphabet, banner3-D, 
                     doh, isometric1, letters, alligator, dotmatrix, 
                     bubble, bulbhead, digital"""
+
+# add the Access-Control-Allow-Origin header to allow cross-origin requests 
+# from the frontend
+@app.middleware("http")
+async def add_cors_headers(request, call_next):
+    response = await call_next(request)
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    return response
 
 #!#################################################
 # * Unimportant stuff, testing, etc
@@ -39,7 +86,7 @@ FIGLET_FONTS = """3-d, 3x5, 5lineoblique, alphabet, banner3-D,
 
 
 @app.get("/")
-async def test():
+async def docs():
     return RedirectResponse("/docs")
 
 
@@ -402,16 +449,57 @@ async def autofill(query: str):
 @app.get("/dog")
 async def dog():
     await do_statistics("dog")
-    pass
+    
 
+    meme = await get_meme(random.choice(["dogpictures","lookatmydog", "rarepuppers", "Zoomies"]))
+    async with aiohttp.ClientSession() as resp:
+        async with resp.get(meme["url"]) as resp:
+            if resp.status != 200:
+                return {
+                    "success": 0,
+                    "data": {"errormessage": "Couldn't fetch the meme!"},
+                }
+            else:
+                meme_bytes = await resp.read()
+                await do_statistics("single_meme")
+                return StreamingResponse(io.BytesIO(meme_bytes), media_type="image/png")
 
 @app.get("/cat")
 async def cat():
     await do_statistics("cat")
-    pass
+    meme = await get_meme("cat")
+    async with aiohttp.ClientSession() as resp:
+        async with resp.get(meme["url"]) as resp:
+            if resp.status != 200:
+                return {
+                    "success": 0,
+                    "data": {"errormessage": "Couldn't fetch the meme!"},
+                }
+            else:
+                meme_bytes = await resp.read()
+                await do_statistics("single_meme")
+                return StreamingResponse(io.BytesIO(meme_bytes), media_type="image/png")
+
+@app.get("/fox")
+async def cat():
+    await do_statistics("fox")
+    meme = await get_meme("fox")
+    async with aiohttp.ClientSession() as resp:
+        async with resp.get(meme["url"]) as resp:
+            if resp.status != 200:
+                return {
+                    "success": 0,
+                    "data": {"errormessage": "Couldn't fetch the meme!"},
+                }
+            else:
+                meme_bytes = await resp.read()
+                await do_statistics("single_meme")
+                return StreamingResponse(io.BytesIO(meme_bytes), media_type="image/png")
+
+
 
 @app.get("/create_meme")
-async def create_meme(top: str, bottom: str, image: str= None):
+async def create_meme(top: str, bottom: str, image: str = None):
     if image in ["aliens", "sap", "successkid"]:
         image = f"./data/images/{image}.jpg"
     elif image is None:
@@ -437,25 +525,26 @@ async def create_meme(top: str, bottom: str, image: str= None):
 
 @app.get("/mealsome")
 async def meme_template_mealsome(me: str, alsome: str):
-    args = { alsome, me}
+    args = {alsome, me}
     await do_statistics("mealsome")
-    meme = MemePy.MemeGenerator.get_meme_image_bytes("mealsome",args=args)
+    meme = MemePy.MemeGenerator.get_meme_image_bytes("mealsome", args=args)
     return StreamingResponse(meme, media_type="image/png")
+
 
 @app.get("/itsretarded")
 async def meme_template_itsretarded(text: str):
-    args = { text}
+    args = {text}
     await do_statistics("itsretarded")
-    meme = MemePy.MemeGenerator.get_meme_image_bytes("itsretarded",args=args)
+    meme = MemePy.MemeGenerator.get_meme_image_bytes("itsretarded", args=args)
     return StreamingResponse(meme, media_type="image/png")
+
 
 @app.get("/headache")
 async def meme_template_headache(text: str):
-    args = { text}
+    args = {text}
     await do_statistics("headache")
-    meme = MemePy.MemeGenerator.get_meme_image_bytes("headache",args=args)
+    meme = MemePy.MemeGenerator.get_meme_image_bytes("headache", args=args)
     return StreamingResponse(meme, media_type="image/png")
-
 
 
 #!#################################################
