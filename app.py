@@ -41,13 +41,14 @@ It will fetch a random meme from reddit, and generate a QR code with the URL, an
 
 # Features
 - QR Code Generator
-- Meme fetcher
+- Meme Fetcher
 - Minecraft Status Checker
-- Meme generator
-- Jokes, quotes, and other fun stuff
-- Ascii art generator
-- Song information fetcher
-- Use of secret internal google APIs for stuff like google search suggestions, and more soon!
+- Meme Generator
+- Jokes, Quotes, and other fun stuff
+- Ascii Art Generator
+- Song Information Fetcher
+- Use of secret internal Google's APIs for stuff like Google Search suggestions, and more soon!
+- A simple mode using ?simple=true (only works for text-related endpoints)
 
 <hr>
 
@@ -91,7 +92,7 @@ async def docs():
 
 
 @app.get("/8ball")
-async def eightball(simple: str = None):
+async def eightball(simple: Optional[str] = "False"):
 
     answers = [
         "It is certain",
@@ -226,7 +227,7 @@ async def single_meme():
 
 
 @app.get("/wyr")
-async def wyr(simple: Optional[str] = None):
+async def wyr(simple: Optional[str] = "False"):
     """Returns a would you rather question"""
     async with aiofiles.open("./data/txt/wyr.txt", "r") as f:
         data = await f.readlines()
@@ -242,7 +243,7 @@ async def wyr(simple: Optional[str] = None):
 
 
 @app.get("/joke")
-async def joke(simple: Optional[str] = None):
+async def joke(simple: Optional[str] = "False"):
     """Returns a joke"""
     async with aiofiles.open("./data/txt/jokes.txt", "r", encoding="utf8") as f:
         data = await f.readlines()
@@ -255,7 +256,7 @@ async def joke(simple: Optional[str] = None):
 
 
 @app.get("/compliment")
-async def compliment(simple: Optional[str] = None):
+async def compliment(simple: Optional[str] = "False"):
     """Returns a compliment"""
     async with aiofiles.open("./data/txt/compliments.txt", "r") as f:
         data = await f.readlines()
@@ -268,7 +269,7 @@ async def compliment(simple: Optional[str] = None):
 
 
 @app.get("/topic")
-async def topic(simple: Optional[str] = None):
+async def topic(simple: Optional[str] = "False"):
     """Returns a topic"""
     async with aiofiles.open("./data/txt/topics.txt", "r", encoding="utf8") as f:
         data = await f.readlines()
@@ -476,7 +477,6 @@ async def dog():
                 }
             else:
                 meme_bytes = await resp.read()
-                await do_statistics("single_meme")
                 return StreamingResponse(io.BytesIO(meme_bytes), media_type="image/png")
 
 @app.get("/cat")
@@ -492,11 +492,10 @@ async def cat():
                 }
             else:
                 meme_bytes = await resp.read()
-                await do_statistics("single_meme")
                 return StreamingResponse(io.BytesIO(meme_bytes), media_type="image/png")
 
 @app.get("/fox")
-async def cat():
+async def fox():
     await do_statistics("fox")
     meme = await get_meme("fox")
     async with aiohttp.ClientSession() as resp:
@@ -508,7 +507,6 @@ async def cat():
                 }
             else:
                 meme_bytes = await resp.read()
-                await do_statistics("single_meme")
                 return StreamingResponse(io.BytesIO(meme_bytes), media_type="image/png")
 
 
