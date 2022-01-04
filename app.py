@@ -14,12 +14,11 @@ import io
 import os
 import dotenv
 
-from extras.do_stats import do_statistics
 
 dotenv.load_dotenv()
 
 from fastapi import FastAPI
-from fastapi.responses import FileResponse, StreamingResponse, RedirectResponse
+from fastapi.responses import FileResponse, StreamingResponse, RedirectResponse, PlainTextResponse
 
 from mcstatus import MinecraftServer
 import pyfiglet
@@ -30,6 +29,7 @@ import MemePy
 from extras.qr_stuff import _styles
 from extras.meme_fetcher import get_meme, topics_accepted
 from extras.memegenerator import make_meme
+from extras.do_stats import do_statistics
 
 # Defining apps and configs.
 
@@ -91,7 +91,7 @@ async def docs():
 
 
 @app.get("/8ball")
-async def eightball():
+async def eightball(simple: str = None):
 
     answers = [
         "It is certain",
@@ -116,6 +116,9 @@ async def eightball():
         "Very doubtful",
     ]
     await do_statistics("8ball")
+    
+    if simple == "true":
+        return PlainTextResponse(random.choice(answers))
     return {"success": 1, "data": {"answer": random.choice(answers)}}
 
 
@@ -223,46 +226,58 @@ async def single_meme():
 
 
 @app.get("/wyr")
-async def wyr():
+async def wyr(simple: str = None):
     """Returns a would you rather question"""
     async with aiofiles.open("./data/txt/wyr.txt", "r") as f:
         data = await f.readlines()
     question = data[random.randrange(0, len(data))][:-2].split(" or ")
 
     await do_statistics("wyr")
+    if simple == "true":
+        question[0] = question[0].capitalize()
+        question[1] = question[1].capitalize()
+        e = f"{question[0]} or {question[1]}?"
+        return PlainTextResponse(e)
     return {"success": 1, "data": {"Would you rather": question}}
 
 
 @app.get("/joke")
-async def joke():
+async def joke(simple: str = None):
     """Returns a joke"""
-    async with aiofiles.open("./data/txt/jokes.txt", "r") as f:
+    async with aiofiles.open("./data/txt/jokes.txt", "r", encoding="utf8") as f:
         data = await f.readlines()
     joke = data[random.randrange(0, len(data))][:-2]
 
     await do_statistics("joke")
+    if simple == "true":
+        return PlainTextResponse(joke)
     return {"success": 1, "data": {"Joke": joke}}
 
 
 @app.get("/compliment")
-async def compliment():
+async def compliment(simple: str = None):
     """Returns a compliment"""
     async with aiofiles.open("./data/txt/compliments.txt", "r") as f:
         data = await f.readlines()
     compliment = data[random.randrange(0, len(data))][:-2]
 
     await do_statistics("compliment")
+    if simple == "true":
+        return PlainTextResponse(compliment)
     return {"success": 1, "data": {"Compliment": compliment}}
 
 
 @app.get("/topic")
-async def topic():
+async def topic(simple: str = None):
     """Returns a topic"""
-    async with aiofiles.open("./data/txt/topics.txt", "r") as f:
+    async with aiofiles.open("./data/txt/topics.txt", "r", encoding="utf8") as f:
         data = await f.readlines()
     topic = data[random.randrange(0, len(data))][:-2]
 
     await do_statistics("topic")
+    if simple == "true":
+        e = f"{topic}?"
+        return PlainTextResponse(e)
     return {"success": 1, "data": {"Topic": topic}}
 
 
@@ -546,6 +561,33 @@ async def meme_template_headache(text: str):
     meme = MemePy.MemeGenerator.get_meme_image_bytes("headache", args=args)
     return StreamingResponse(meme, media_type="image/png")
 
+@app.get("/classnote")
+async def meme_template_classnote(text: str):
+    args = { text}
+    await do_statistics("itstime")
+    meme = MemePy.MemeGenerator.get_meme_image_bytes("classnote",args=args)
+    return StreamingResponse(meme, media_type="image/png")
+
+@app.get("/nutbutton")
+async def meme_template_nutbutton(text: str):
+    args = { text}
+    await do_statistics("nutbutton")
+    meme = MemePy.MemeGenerator.get_meme_image_bytes("nutbutton",args=args)
+    return StreamingResponse(meme, media_type="image/png")
+
+@app.get("/pills")
+async def meme_template_pills(text:str):
+    args = {text}
+    await do_statistics("pills")
+    meme = MemePy.MemeGenerator.get_meme_image_bytes("pills",args=args)
+    return StreamingResponse(meme, media_type="image/png")
+
+@app.get("/balloon")
+async def meme_template_balloon(text:str, person:str, stopper:str):
+    args = {text, person, stopper}
+    await do_statistics("balloon")
+    meme = MemePy.MemeGenerator.get_meme_image_bytes("balloon",args=args)
+    return StreamingResponse(meme, media_type="image/png")
 
 #!#################################################
 # * Undocumented, for personal use
