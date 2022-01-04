@@ -1,74 +1,98 @@
+"""
+Note to myself:
+! TO restart the api after edits:
+pkill gunicorn
+gunicorn app:app -w 1 -k uvicorn.workers.UvicornWorker -b "127.0.0.1:8000" --daemon
+"""
+
+import json
+from typing import Optional
+import aiofiles
+import aiohttp
 import random
-import dotenv
-import os
-import json
-import requests
 import io
-import json
+import os
+import dotenv
 
-import qrcode
-from qrcode.image import styles
-from qrcode.image.styledpil import StyledPilImage
-from qrcode.image.styles.moduledrawers import *
-
-import praw
-import prawcore
-import pytesseract
-from mcstatus import MinecraftServer
-import pyfiglet
-
-from flask import Flask, jsonify, render_template, request, send_file, make_response
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
-
-
-from .ext.qr_stuff import *
-from .ext.memes import *
+from extras.do_stats import do_statistics
 
 dotenv.load_dotenv()
 
-app = Flask(__name__)
-TYPES_ACCEPTED = ["default", "colour", "color", "pattern"]
+from fastapi import FastAPI
+from fastapi.responses import FileResponse, StreamingResponse, RedirectResponse
 
-from flask_autodoc.autodoc import Autodoc
+from mcstatus import MinecraftServer
+import pyfiglet
+import qrcode
+from qrcode.image.styledpil import StyledPilImage
+import MemePy
 
-auto = Autodoc(app)
+from extras.qr_stuff import _styles
+from extras.meme_fetcher import get_meme, topics_accepted
+from extras.memegenerator import make_meme
 
-app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
+# Defining apps and configs.
 
-reddit = praw.Reddit(
-    client_id="SwiSNW8bR-yGZ3N0ThTIIw",
-    client_secret="v04mt8iI5nuw1D6GzR9Ckg1KI5h0Eg",
-    user_agent="Random api lol",
+description = """
+This is a simple API that is meant to "Do it all" for you.
+It will fetch a random meme from reddit, and generate a QR code with the URL, and much, much more!
+
+<hr>
+
+# Features
+- QR Code Generator
+- Meme fetcher
+- Minecraft Status Checker
+- Meme generator
+- Jokes, quotes, and other fun stuff
+- Ascii art generator
+- Song information fetcher
+- Use of secret internal google APIs for stuff like google search suggestions, and more soon!
+
+<hr>
+
+## If you think you have an idea to make the API better, please let me know!
+Join the Coding horizon discord server for help and support!
+https://discord.gg/rqhgqTqFbp
+"""
+
+app = FastAPI(
+    title="DhravyaAPI",
+    description=description,
+    contact={
+        "name": "Dhravya Shah",
+        "url": "https://dhravya.me",
+        "email": "dhravyashah@gmail.com",
+    },
+    version="2.0",
+    openapi_url="/v2/openapi.json",
 )
 
-limiter = Limiter(
-    app, key_func=get_remote_address, default_limits=["1000 per day", "500 per hour"]
-)
+FIGLET_FONTS = """3-d, 3x5, 5lineoblique, alphabet, banner3-D, 
+                    doh, isometric1, letters, alligator, dotmatrix, 
+                    bubble, bulbhead, digital"""
 
-def jsonify(indent=4, sort_keys=False, **kwargs):
-    response = make_response(
-        json.dumps(dict(**kwargs), indent=indent, sort_keys=sort_keys)
-    )
-    response.headers["Content-Type"] = "application/json; charset=utf-8"
-    response.headers["mimetype"] = "application/json"
-    response.status_code = 200
+# add the Access-Control-Allow-Origin header to allow cross-origin requests 
+# from the frontend
+@app.middleware("http")
+async def add_cors_headers(request, call_next):
+    response = await call_next(request)
+    response.headers["Access-Control-Allow-Origin"] = "*"
     return response
 
+#!#################################################
+# * Unimportant stuff, testing, etc
+#!#################################################
 
-@app.route("/")
-def index():
-    return render_template("index.html")
 
-@app.route('/docs')
-def documentation():
-    return auto.html()
+@app.get("/")
+async def docs():
+    return RedirectResponse("/docs")
 
-@app.route("/8ball")
-@app.route("/eightball")
-@auto.doc()
-@limiter.exempt
-def eightball():
+
+@app.get("/8ball")
+async def eightball():
+
     answers = [
         "It is certain",
         "It is decidedly so",
@@ -91,30 +115,26 @@ def eightball():
         "Outlook not so good",
         "Very doubtful",
     ]
-    return jsonify(**{"response": random.choice(answers)})
+    await do_statistics("8ball")
+    return {"success": 1, "data": {"answer": random.choice(answers)}}
 
 
-@app.route("/qrcode")
-@app.route("/qr")
-@auto.doc()
-@limiter.limit("20 per minute")
-def qrcode_generator():
-    query = request.args.get("query")
+#!#################################################
+# * QR Code generator
+#!#################################################
+
+
+@app.get("/qrcode")
+async def qr_code(
+    query: Optional[str] = None,
+    drawer: Optional[str] = None,
+    mask: Optional[str] = None,
+    fg: Optional[str] = None,
+    bg: Optional[str] = None,
+):
+
     if not query:
-        return jsonify(
-            **{
-                "error": "No query provided, You need to provide a query to generate a QR code"
-            }
-        )
-    # if len(query) > 250 or len(query) < 1:
-    #     return jsonify(**{"error": "Query must have between 1 and 250 characters."})
-
-    with open("/var/www/api/dhravyaAPI/data.json", "r") as f:
-        data = json.load(f)
-    f = data["total_qr_requests"] + 1
-    data["total_qr_requests"] = f
-    with open("/var/www/api/dhravyaAPI/data.json", "w") as f:
-        json.dump(data, f)
+        return {"success": 0, "data": {"errormessage": "You didn't give a query!"}}
 
     n = random.randint(1, 5)
 
@@ -127,352 +147,415 @@ def qrcode_generator():
     qr.add_data(query)
     qr.make(fit=True)
 
-    drawer = request.args.get("drawer")
     if not drawer:
         drawer = "1"
 
-    mask = request.args.get("mask")
     if not mask:
         mask = "1"
 
     # CHecks if the drawer and mask is valid
-    if drawer not in styles["drawers"]:
-        return jsonify(**{"error": "Drawer not found"})
-    if mask not in styles["masks"]:
-        return jsonify(**{"error": "Mask not found"})
+    if drawer not in _styles["drawers"]:
+        return {"success": 0, "data": {"errormessage": "That drawer is invalid!"}}
+    if mask not in _styles["masks"]:
+        return {"success": 0, "data": {"errormessage": "That mask is invalid!!"}}
 
-    fg_color = request.args.get("fg")
-    if fg_color:
-        fg_color = "black"
-
-    bg_color = request.args.get("bg")
-    if bg_color:
-        bg_color = "white"
-
-    drawer = styles["drawers"][str(drawer)]
+    drawer = _styles["drawers"][str(drawer)]
     try:
-        if fg_color and bg_color:
-            img = qr.make_image(
-                fill_color=fg_color, back_color=bg_color, mask=styles["masks"]["1"]
-            )
-        elif fg_color:
-            img = qr.make_image(fill_color=fg_color, mask=mask)
+        if fg or bg:
+            img = qr.make_image(fill_color=fg, back_color=bg)
         else:
             img = qr.make_image(
                 module_drawer=drawer,
-                color_mask=styles["masks"][str(mask)],
+                color_mask=_styles["masks"][str(mask)],
                 image_factory=StyledPilImage,
-                fill_color=fg_color,
-                back_color=bg_color,
             )
     except Exception as e:
-        return jsonify(**{"error": str(e)})
-    img.save(f"/var/www/api/dhravyaAPI/qr_codes/{n}.png", "PNG")
-    return send_file(f"/var/www/api/dhravyaAPI/qr_codes/{n}.png", mimetype="image/png")
+        return {"success": 0, "data": {"errormessage": f"Unexpected error: {e}"}}
+    img.save(f"./temp/qr_codes/{n}.png", "PNG")
+    await do_statistics("qrcode")
+    return FileResponse(f"./temp/qr_codes/{n}.png")
 
 
-@app.route("/meme")
-@app.route("/memes")
-@auto.doc()
-def send_single_meme():
-
-    if request.args.get("subreddit"):
-        subrddit = request.args.get("subreddit")
-    else:
-        subreddits = ["memes", "dankmemes", "meme", "funny"]
-        subrddit = random.choice(subreddits)
-    subreddit = reddit.subreddit(subrddit)
-
-    with open("/var/www/api/dhravyaAPI/data.json", "r") as f:
-        data = json.load(f)
-    f = data["total_meme_requests"] + 1
-    data["total_meme_requests"] = f
-    with open("/var/www/api/dhravyaAPI/data.json", "w") as f:
-        json.dump(data, f)
-
-    def get_submission(subreddit):
-        decider = random.randint(0, 2)
-        if decider == 0:
-            submission = random.choice(list(subreddit.random_rising()))
-        elif decider == 1:
-            submission = subreddit.random()
-        else:
-            submission = random.choice(list(subreddit.hot()))
-
-        return submission
-
-    submission = get_submission(subreddit)
-
-    def generate():
-        r = requests.get(submission.url, stream=True)
-        for chunk in r.iter_content(2048):
-            yield chunk
-
-    return app.response_class(generate(), mimetype="image/jpg")
-
-
-@app.route("/meme/<topic>")
-@app.route("/memes/<topic>")
-@limiter.limit("30 per minute")
-@auto.doc()
-def memes(topic):
-    # Get a meme of the requested topic
+#!#################################################
+# * Memes
+#!#################################################
+@app.get("/meme/{topic}")
+async def meme(topic: str):
     if not topic in topics_accepted:
         topic = topic + "memes"
-        # Search for topic using the reddit api
-        subreddit = reddit.subreddit(topic)
-        if not subreddit:
-            return jsonify(**{"error": "Topic not found"})
 
-        # Get a random meme from the subreddit
-    else:
-        subreddit = reddit.subreddit(random.choice(topics_accepted[topic]))
+    meme = await get_meme(topic)
+    await do_statistics("meme")
+    return {
+        "success": 1,
+        "data": {
+            "url": meme["url"],
+            "subreddit": meme["subreddit"],
+            "title": meme["title"],
+            "score": meme["score"],
+            "id": meme["id"],
+            "selftext": meme["selftext"],
+            "is_nsfw": meme["over_18"],
+        },
+    }
 
-    if subreddit is None:
-        return jsonify({"error": "Topic not found"})
 
-    with open("/var/www/api/dhravyaAPI/data.json", "r") as f:
-        data = json.load(f)
-    f = data["total_meme_requests"] + 1
-    data["total_meme_requests"] = f
-    with open("/var/www/api/dhravyaAPI/data.json", "w") as f:
-        json.dump(data, f)
+@app.get("/meme")
+async def single_meme():
+    meme = await get_meme("random")
 
-    decider = random.randint(0, 2)
+    async with aiohttp.ClientSession() as resp:
+        async with resp.get(meme["url"]) as resp:
+            if resp.status != 200:
+                return {
+                    "success": 0,
+                    "data": {"errormessage": "Couldn't fetch the meme!"},
+                }
+            else:
+                meme_bytes = await resp.read()
+                await do_statistics("single_meme")
+                return StreamingResponse(io.BytesIO(meme_bytes), media_type="image/png")
+
+
+#!#################################################
+# * Joke, WYR, etc generators
+#!#################################################
+
+
+@app.get("/wyr")
+async def wyr():
+    """Returns a would you rather question"""
+    async with aiofiles.open("./data/txt/wyr.txt", "r") as f:
+        data = await f.readlines()
+    question = data[random.randrange(0, len(data))][:-2].split(" or ")
+
+    await do_statistics("wyr")
+    return {"success": 1, "data": {"Would you rather": question}}
+
+
+@app.get("/joke")
+async def joke():
+    """Returns a joke"""
+    async with aiofiles.open("./data/txt/jokes.txt", "r") as f:
+        data = await f.readlines()
+    joke = data[random.randrange(0, len(data))][:-2]
+
+    await do_statistics("joke")
+    return {"success": 1, "data": {"Joke": joke}}
+
+
+@app.get("/compliment")
+async def compliment():
+    """Returns a compliment"""
+    async with aiofiles.open("./data/txt/compliments.txt", "r") as f:
+        data = await f.readlines()
+    compliment = data[random.randrange(0, len(data))][:-2]
+
+    await do_statistics("compliment")
+    return {"success": 1, "data": {"Compliment": compliment}}
+
+
+@app.get("/topic")
+async def topic():
+    """Returns a topic"""
+    async with aiofiles.open("./data/txt/topics.txt", "r") as f:
+        data = await f.readlines()
+    topic = data[random.randrange(0, len(data))][:-2]
+
+    await do_statistics("topic")
+    return {"success": 1, "data": {"Topic": topic}}
+
+
+#!#################################################
+# * ASCII
+#!#################################################
+
+
+@app.get("/ascii")
+async def ascii(text: Optional[str] = "No text provided", font: Optional[str] = ""):
+    """Returns an ascii art"""
     try:
-        if decider == 0:
-            submission = random.choice(list(subreddit.hot(limit=100)))
-        elif decider == 1:
-            submission = random.choice(list(subreddit.new(limit=100)))
-        else:
-            submission = random.choice(list(subreddit.top(limit=100)))
-        if not submission:
-            return jsonify(**{"error": "No memes found"})
-    except prawcore.exceptions.NotFound:
-        return jsonify(**{"error": "Topic not found"})
-
-    return jsonify(
-        **{
-            "url": submission.url,
-            "title": submission.title,
-            "subreddit": submission.subreddit.display_name,
-            "score": submission.score,
-            "id": submission.id,
-            "nsfw": submission.over_18,
-            "selftext": submission.selftext,
-            "author": submission.author.name,
-            "created": submission.created,
-            "permalink": submission.permalink,
+        result = pyfiglet.figlet_format(text, font=font)
+    except Exception as e:
+        return {
+            "success": 0,
+            "data": {
+                "errormessage": f"Unexpected error: {e} Make sure your font is valid! {FIGLET_FONTS}"
+            },
         }
-    )
+
+    await do_statistics("ascii")
+    return {
+        "success": 1,
+        "data": {
+            "Ascii": result,
+            "accepted_fonts": f"Accepted fonts are {FIGLET_FONTS} ",
+        },
+    }
 
 
-# Accept an image from user
-@app.route("/ocr", methods=["GET", "POST"])
-@limiter.limit("15 per minute")
-def ocr():
-
-    with open("/var/www/api/dhravyaAPI/data.json", "r") as f:
-        data = json.load(f)
-    f = data["total_ocr_requests"] + 1
-    data["total_ocr_requests"] = f
-    with open("/var/www/api/dhravyaAPI/data.json", "w") as f:
-        json.dump(data, f)
-
-    if request.method == "POST":
-        # Get the image from the request
-        image = request.files["image"]
-        # Check if the image is valid
-        if not image:
-            return jsonify({"error": "No image found"})
-        img = Image.open(image)
-
-    elif request.method == "GET":
-        imagefile = request.args.get("url")
-        # Save the image to a file
-
-        if not imagefile.startswith("http"):
-            imagefile = "https://" + imagefile
-        if not imagefile:
-            return jsonify({"error": "No image provided"})
-        image = requests.get(imagefile)
-        img = Image.open(io.BytesIO(image.content))
-    # Run the OCR
-    text = pytesseract.image_to_string(img)
-    # Remove the file\
-    return jsonify(**{"text": text})
+#!#################################################
+# * Use of other apis
+#!#################################################
 
 
-@app.route("/compliment")
-@app.route("/compliments")
-def compliment():
-    with open("/var/www/api/dhravyaAPI/data.json", "r") as f:
-        data = json.load(f)
-    f = data["total_compliment_requests"] + 1
-    data["total_compliment_requests"] = f
-    with open("/var/www/api/dhravyaAPI/data.json", "w") as f:
-        json.dump(data, f)
+@app.get("/songinfo")
+async def song_info(song: str):
+    GENIUS_API_URL = "https://api.genius.com"
+    headers = {"Authorization": f'Bearer {os.environ["GENIUS_API_KEY"]}'}
+    params = {"q": song}
 
-    with open("/var/www/api/dhravyaAPI/txt_files/compliments.txt", "r", encoding="utf-8") as f:
-        # Get a random compliment
-        compliments = f.readlines()
+    async with aiohttp.ClientSession() as session:
+        async with session.get(
+            GENIUS_API_URL + "/search", params=params, headers=headers
+        ) as resp:
+            if resp.status != 200:
+                return {
+                    "success": 0,
+                    "data": {
+                        "errormessage": "Couldn't fetch the song info!",
+                    },
+                }
+            data = await resp.json()
 
-        return jsonify(
-            **{"compliment": compliments[random.randrange(0, len(compliments))][:-2]}
-        )
-
-
-@app.route("/wyr")
-@app.route("/wouldyourather")
-def wyr():
-    with open("/var/www/api/dhravyaAPI/data.json", "r") as f:
-        data = json.load(f)
-    f = data["total_wyr_requests"] + 1
-    data["total_wyr_requests"] = f
-    with open("/var/www/api/dhravyaAPI/data.json", "w") as f:
-        json.dump(data, f)
-
-    with open("/var/www/api/dhravyaAPI/txt_files/wyr.txt", "r", encoding="utf-8") as f:
-        # Get a random compliment
-        wyr = f.readlines()
-
-        return jsonify(**{"wyr": wyr[random.randrange(0, len(wyr))][:-2]})
+        await do_statistics("song_info")
+        return data
 
 
-@app.route("/joke")
-@app.route("/jokes")
-def joke():
-    with open("/var/www/api/dhravyaAPI/data.json", "r") as f:
-        data = json.load(f)
-    f = data["total_joke_requests"] + 1
-    data["total_joke_requests"] = f
-    with open("/var/www/api/dhravyaAPI/data.json", "w") as f:
-        json.dump(data, f)
-
-    with open("/var/www/api/dhravyaAPI/txt_files/jokes.txt", "r", encoding="utf-8") as f:
-        # Get a random compliment
-        jokes = f.readlines()
-
-        return jsonify(**{"joke": jokes[random.randrange(0, len(jokes))][:-2]})
-
-
-@app.route("/stats")
-def stats():
-    with open("/var/www/api/dhravyaAPI/data.json", "r") as f:
-        data = json.load(f)
-    return jsonify(**data)
-
-@app.route("/ascii")
-@app.route("/asciiart")
-def ascii():
-    with open("/var/www/api/dhravyaAPI/data.json", "r") as f:
-        data = json.load(f)
-    f = data["total_ascii_requests"] + 1
-    data["total_ascii_requests"] = f
-    with open("/var/www/api/dhravyaAPI/data.json", "w") as f:
-        json.dump(data, f)
-
-    if not request.args.get("text"):
-        return jsonify(**{"error": "No text provided"})
-
-    if not request.args.get("font"):
-        result = pyfiglet.figlet_format(request.args.get("text"))
-    else:
-        try:
-            result = pyfiglet.figlet_format(request.args.get("text"), font=request.args.get("font"))
-        except:
-            return jsonify(**{"error": "Font not found. Accepted fonts are slant, 3-d, 3x5, 5lineoblique, alphabet, banner3-D, doh, isometric1, letters, alligator, dotmatrix, bubble, bulbhead, digital."})
-    print(result)
-    return jsonify(**{"ascii": result, "font": "Available fonts are: slant, 3-d, 3x5, 5lineoblique, alphabet, banner3-D, doh, isometric1, letters, alligator, dotmatrix, bubble, bulbhead, digital."})
-
-@app.route("/song_info")
-def song_info():
-    song = request.args.get("song")
-    base_url = "http://api.genius.com"
-    headers = {'Authorization': 'Bearer H-KtNuYpHYXoBJqkt_uScjLamVMBmPOUqinXD2fAS9ictcy2c83ZeeCUHPJticwe'}
-
-    search_url = base_url + "/search"
-    song_title = song
-    params = {'q': song_title}
-    response = requests.get(search_url, params=params, headers=headers)
-    json = response.json()
-    return jsonify(**json)
-
-@app.route("/mcstatus")
-def mcstatus():
-    with open("/var/www/api/dhravyaAPI/data.json", "r") as f:
-        data = json.load(f)
-    f = data["total_mcstatus_requests"] + 1
-    data["total_mcstatus_requests"] = f
-    with open("/var/www/api/dhravyaAPI/data.json", "w") as f:
-        json.dump(data, f)
-
-    host = request.args.get("host")
-    if not host:
-        return jsonify(**{"error": "No host provided"})
-    port = request.args.get("port")
+@app.get("/mcstatus")
+async def mcstatus(host: str, port: str = None):
+    """Returns the status of a minecraft server"""
     if not port:
         port = 25565
-
     try:
         server = MinecraftServer.lookup(host + ":" + str(port))
         status = server.status()
     except Exception as e:
-        return jsonify(**{"error": "Server not found: " + host + ":" + str(port), "error": str(e)})
+        return {
+            "success": 0,
+            "data": {"errormessage": f"Unexpected error: {e}"},
+        }
 
-
-    return jsonify(
-    **{
-        "online": status.players.online,
-        "max": status.players.max,
-        "latency": str(status.latency) + "ms"
+    await do_statistics("mcstatus")
+    return {
+        "success": 1,
+        "data": {
+            "host": host,
+            "port": port,
+            "online": status.players.online,
+            "max": status.players.max,
+        },
     }
-    )
-
-@app.route("/dog")
-@app.route("/dogs")
-def dog():
-    # Get a random dog from /dogs folder
-    with open("/var/www/api/dhravyaAPI/data.json", "r") as f:
-        data = json.load(f)
-    f = data["total_dog_requests"] + 1
-    data["total_dog_requests"] = f
-    with open("/var/www/api/dhravyaAPI/data.json", "w") as f:
-        json.dump(data, f)
-
-    dogs = os.listdir("/var/www/api/dhravyaAPI/dogs")
-    return send_file("/var/www/api/dhravyaAPI/dogs/" + dogs[random.randrange(0, len(dogs))])
-
-@app.route('/cat')
-@app.route('/cats')
-def cat():
-    with open("/var/www/api/dhravyaAPI/data.json", "r") as f:
-        data = json.load(f)
-    f = data["total_dog_requests"] + 1
-    data["total_dog_requests"] = f
-    with open("/var/www/api/dhravyaAPI/data.json", "w") as f:
-        json.dump(data, f)
-
-    cats = os.listdir("/var/www/api/dhravyaAPI/cats")
-    return send_file("/var/www/api/dhravyaAPI/cats/" + cats[random.randrange(0, len(cats))])
-
-@app.route("/topic")
-@app.route("/topics")
-def topic():
-    with open("/var/www/api/dhravyaAPI/data.json", "r") as f:
-        data = json.load(f)
-    f = data["total_topic_requests"] + 1
-    data["total_topic_requests"] = f
-    with open("/var/www/api/dhravyaAPI/data.json", "w") as f:
-        json.dump(data, f)
-
-    """ Generates a conversation starter"""
-    with open("/var/www/api/dhravyaAPI/txt_files/topics.txt", "r", encoding="utf-8") as f:
-        # Get a random compliment
-        jokes = f.readlines()
-
-        return jsonify(**{"topic": jokes[random.randrange(0, len(jokes))][:-2]})
 
 
-if __name__ == "__main__":
-    app.run(port=80)
+@app.get("/bored")
+async def bored():
+    """Returns a bored fact"""
+    async with aiohttp.ClientSession() as session:
+        async with session.get("https://www.boredapi.com/api/activity") as resp:
+            if resp.status != 200:
+                return {
+                    "success": 0,
+                    "data": {
+                        "errormessage": "Couldn't fetch the bored fact!",
+                    },
+                }
+            data = await resp.json()
+
+    await do_statistics("bored")
+    return {"success": 1, "data": data}
+
+
+@app.get("/numberfact/{number:int}")
+async def numberfact(number):
+
+    """Returns a random number fact"""
+    async with aiohttp.ClientSession() as session:
+        async with session.get(f"http://numbersapi.com/{number}") as resp:
+            if resp.status != 200:
+                return {
+                    "success": 0,
+                    "data": {
+                        "errormessage": "Couldn't fetch the number fact!",
+                    },
+                }
+            data = await resp.text()
+            if "(submit one to numbersapi at google mail!)" in data:
+                return {
+                    "success": 0,
+                    "data": {
+                        "errormessage": "Couldn't fetch the number fact!",
+                    },
+                }
+
+    await do_statistics("numberfact")
+    return {"success": 1, "data": data}
+
+
+@app.get("/randomuser")
+async def randomuser():
+    """Returns a random user"""
+    async with aiohttp.ClientSession() as session:
+        async with session.get("https://randomuser.me/api/") as resp:
+            if resp.status != 200:
+                return {
+                    "success": 0,
+                    "data": {
+                        "errormessage": "Couldn't fetch the random user!",
+                    },
+                }
+            data = await resp.json()
+
+    await do_statistics("randomuser")
+    return {"success": 1, "data": data["results"][0]}
+
+
+#! kinda Secret google endpoints
+
+
+@app.get("/autofill")
+async def autofill(query: str):
+    # This “API” is a bit of a hack; it was only meant for use by
+    # Google’s own products. and hence it is undocumented.
+    # Attribution: https://shreyaschand.com/blog/2013/01/03/google-autocomplete-api/
+    # I’m not sure if this is the best way to do this, but it works.
+    BASE_URL = "https://suggestqueries.google.com/complete/search"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(
+            BASE_URL, params={"client": "firefox", "q": query, "hl": "en"}
+        ) as resp:
+            if resp.status != 200:
+                return {
+                    "success": 0,
+                    "data": {
+                        "errormessage": "Couldn't fetch the autofill!",
+                    },
+                }
+            response = await resp.text()
+            response = response.split("(")[0].split(")")[0]
+            response = json.loads(response)
+            data = response[1]
+            data = data[:10]
+
+    await do_statistics("autofill")
+    return {"success": 1, "data": data}
+
+
+#!#################################################
+# * Image providers and image processing
+#!#################################################
+
+
+@app.get("/dog")
+async def dog():
+    await do_statistics("dog")
+    
+
+    meme = await get_meme(random.choice(["dogpictures","lookatmydog", "rarepuppers", "Zoomies"]))
+    async with aiohttp.ClientSession() as resp:
+        async with resp.get(meme["url"]) as resp:
+            if resp.status != 200:
+                return {
+                    "success": 0,
+                    "data": {"errormessage": "Couldn't fetch the meme!"},
+                }
+            else:
+                meme_bytes = await resp.read()
+                await do_statistics("single_meme")
+                return StreamingResponse(io.BytesIO(meme_bytes), media_type="image/png")
+
+@app.get("/cat")
+async def cat():
+    await do_statistics("cat")
+    meme = await get_meme("cat")
+    async with aiohttp.ClientSession() as resp:
+        async with resp.get(meme["url"]) as resp:
+            if resp.status != 200:
+                return {
+                    "success": 0,
+                    "data": {"errormessage": "Couldn't fetch the meme!"},
+                }
+            else:
+                meme_bytes = await resp.read()
+                await do_statistics("single_meme")
+                return StreamingResponse(io.BytesIO(meme_bytes), media_type="image/png")
+
+@app.get("/fox")
+async def cat():
+    await do_statistics("fox")
+    meme = await get_meme("fox")
+    async with aiohttp.ClientSession() as resp:
+        async with resp.get(meme["url"]) as resp:
+            if resp.status != 200:
+                return {
+                    "success": 0,
+                    "data": {"errormessage": "Couldn't fetch the meme!"},
+                }
+            else:
+                meme_bytes = await resp.read()
+                await do_statistics("single_meme")
+                return StreamingResponse(io.BytesIO(meme_bytes), media_type="image/png")
+
+
+
+@app.get("/create_meme")
+async def create_meme(top: str, bottom: str, image: str = None):
+    if image in ["aliens", "sap", "successkid"]:
+        image = f"./data/images/{image}.jpg"
+    elif image is None:
+        image = "./data/images/successkid.jpg"
+    else:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(image) as resp:
+                if resp.status != 200:
+                    return {
+                        "success": 0,
+                        "data": {
+                            "errormessage": "Couldn't fetch the image!",
+                        },
+                    }
+                image = await resp.read()
+                async with aiofiles.open("./data/images/temp.jpg", "wb") as f:
+                    await f.write(image)
+                image = "./data/images/temp.jpg"
+    await do_statistics("create_meme")
+    make_meme(top, bottom, image)
+    return FileResponse("./temp.png")
+
+
+@app.get("/mealsome")
+async def meme_template_mealsome(me: str, alsome: str):
+    args = {alsome, me}
+    await do_statistics("mealsome")
+    meme = MemePy.MemeGenerator.get_meme_image_bytes("mealsome", args=args)
+    return StreamingResponse(meme, media_type="image/png")
+
+
+@app.get("/itsretarded")
+async def meme_template_itsretarded(text: str):
+    args = {text}
+    await do_statistics("itsretarded")
+    meme = MemePy.MemeGenerator.get_meme_image_bytes("itsretarded", args=args)
+    return StreamingResponse(meme, media_type="image/png")
+
+
+@app.get("/headache")
+async def meme_template_headache(text: str):
+    args = {text}
+    await do_statistics("headache")
+    meme = MemePy.MemeGenerator.get_meme_image_bytes("headache", args=args)
+    return StreamingResponse(meme, media_type="image/png")
+
+
+#!#################################################
+# * Undocumented, for personal use
+#!#################################################
+
+
+@app.get("/stats")
+async def stats():
+    with open("statistics.json", "r") as f:
+        statistics = json.load(f)
+
+    await do_statistics("stats")
+    return {"success": 1, "data": {"statistics": statistics}}

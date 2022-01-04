@@ -1,0 +1,6 @@
+fastapi
+memepy
+pyfiglet
+mcstatus
+qrcode
+Pillow
