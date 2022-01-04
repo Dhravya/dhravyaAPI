@@ -11,7 +11,7 @@ import dotenv
 dotenv.load_dotenv()
 
 from fastapi import FastAPI
-from fastapi.responses import FileResponse, StreamingResponse, RedirectResponse
+from fastapi.responses import FileResponse, StreamingResponse, RedirectResponse, PlainTextResponse
 
 from mcstatus import MinecraftServer
 import pyfiglet
@@ -42,7 +42,7 @@ async def test():
 
 
 @app.get("/8ball")
-async def eightball():
+async def eightball(simple: str = None):
 
     answers = [
         "It is certain",
@@ -67,6 +67,9 @@ async def eightball():
         "Very doubtful",
     ]
     await do_statistics("8ball")
+    
+    if simple == "true":
+        return PlainTextResponse(random.choice(answers))
     return {"success": 1, "data": {"answer": random.choice(answers)}}
 
 
@@ -174,46 +177,58 @@ async def single_meme():
 
 
 @app.get("/wyr")
-async def wyr():
+async def wyr(simple: str = None):
     """Returns a would you rather question"""
     async with aiofiles.open("./data/txt/wyr.txt", "r") as f:
         data = await f.readlines()
     question = data[random.randrange(0, len(data))][:-2].split(" or ")
 
     await do_statistics("wyr")
+    if simple == "true":
+        question[0] = question[0].capitalize()
+        question[1] = question[1].capitalize()
+        e = f"{question[0]} or {question[1]}?"
+        return PlainTextResponse(e)
     return {"success": 1, "data": {"Would you rather": question}}
 
 
 @app.get("/joke")
-async def joke():
+async def joke(simple: str = None):
     """Returns a joke"""
-    async with aiofiles.open("./data/txt/jokes.txt", "r") as f:
+    async with aiofiles.open("./data/txt/jokes.txt", "r", encoding="utf8") as f:
         data = await f.readlines()
     joke = data[random.randrange(0, len(data))][:-2]
 
     await do_statistics("joke")
+    if simple == "true":
+        return PlainTextResponse(joke)
     return {"success": 1, "data": {"Joke": joke}}
 
 
 @app.get("/compliment")
-async def compliment():
+async def compliment(simple: str = None):
     """Returns a compliment"""
     async with aiofiles.open("./data/txt/compliments.txt", "r") as f:
         data = await f.readlines()
     compliment = data[random.randrange(0, len(data))][:-2]
 
     await do_statistics("compliment")
+    if simple == "true":
+        return PlainTextResponse(compliment)
     return {"success": 1, "data": {"Compliment": compliment}}
 
 
 @app.get("/topic")
-async def topic():
+async def topic(simple: str = None):
     """Returns a topic"""
-    async with aiofiles.open("./data/txt/topics.txt", "r") as f:
+    async with aiofiles.open("./data/txt/topics.txt", "r", encoding="utf8") as f:
         data = await f.readlines()
     topic = data[random.randrange(0, len(data))][:-2]
 
     await do_statistics("topic")
+    if simple == "true":
+        e = f"{topic}?"
+        return PlainTextResponse(e)
     return {"success": 1, "data": {"Topic": topic}}
 
 

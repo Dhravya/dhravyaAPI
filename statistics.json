@@ -1,5 +1,5 @@
 {
-    "8ball": 3,
+    "8ball": 49,
     "age": 2,
     "bored": 2,
     "numberfact": 5,
@@ -21,5 +21,9 @@
     "pills": 3,
     "balloon": 2,
     "classy": 5,
-    "finally": 2
+    "finally": 2,
+    "wyr": 7,
+    "joke": 16,
+    "compliment": 26,
+    "topic": 140
 }
