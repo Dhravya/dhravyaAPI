@@ -226,7 +226,7 @@ async def single_meme():
 
 
 @app.get("/wyr")
-async def wyr(simple: str = None):
+async def wyr(simple: Optional[str] = None):
     """Returns a would you rather question"""
     async with aiofiles.open("./data/txt/wyr.txt", "r") as f:
         data = await f.readlines()
@@ -242,7 +242,7 @@ async def wyr(simple: str = None):
 
 
 @app.get("/joke")
-async def joke(simple: str = None):
+async def joke(simple: Optional[str] = None):
     """Returns a joke"""
     async with aiofiles.open("./data/txt/jokes.txt", "r", encoding="utf8") as f:
         data = await f.readlines()
@@ -255,7 +255,7 @@ async def joke(simple: str = None):
 
 
 @app.get("/compliment")
-async def compliment(simple: str = None):
+async def compliment(simple: Optional[str] = None):
     """Returns a compliment"""
     async with aiofiles.open("./data/txt/compliments.txt", "r") as f:
         data = await f.readlines()
@@ -268,7 +268,7 @@ async def compliment(simple: str = None):
 
 
 @app.get("/topic")
-async def topic(simple: str = None):
+async def topic(simple: Optional[str] = None):
     """Returns a topic"""
     async with aiofiles.open("./data/txt/topics.txt", "r", encoding="utf8") as f:
         data = await f.readlines()
