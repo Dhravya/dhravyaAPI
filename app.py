@@ -18,7 +18,13 @@ import dotenv
 dotenv.load_dotenv()
 
 from fastapi import FastAPI
-from fastapi.responses import FileResponse, StreamingResponse, RedirectResponse, PlainTextResponse
+from fastapi.responses import (
+    FileResponse,
+    StreamingResponse,
+    RedirectResponse,
+    PlainTextResponse,
+    JSONResponse,
+)
 
 from mcstatus import MinecraftServer
 import pyfiglet
@@ -73,13 +79,14 @@ FIGLET_FONTS = """3-d, 3x5, 5lineoblique, alphabet, banner3-D,
                     doh, isometric1, letters, alligator, dotmatrix, 
                     bubble, bulbhead, digital"""
 
-# add the Access-Control-Allow-Origin header to allow cross-origin requests 
+# add the Access-Control-Allow-Origin header to allow cross-origin requests
 # from the frontend
 @app.middleware("http")
 async def add_cors_headers(request, call_next):
     response = await call_next(request)
     response.headers["Access-Control-Allow-Origin"] = "*"
     return response
+
 
 #!#################################################
 # * Unimportant stuff, testing, etc
@@ -117,7 +124,7 @@ async def eightball(simple: Optional[str] = "False"):
         "Very doubtful",
     ]
     await do_statistics("8ball")
-    
+
     if simple == "true":
         return PlainTextResponse(random.choice(answers))
     return {"success": 1, "data": {"answer": random.choice(answers)}}
@@ -315,6 +322,80 @@ async def ascii(text: Optional[str] = "No text provided", font: Optional[str] = 
 #!#################################################
 
 
+@app.get("/waifu")
+async def waifu(type: Optional[str] = "waifu"):
+    """Grabs a picture of a (SFW) Waifu. Will return types of anime if the type chosen is not valid."""
+    animetypes = [
+        "waifu",
+        "neko",
+        "shinobu",
+        "megumin",
+        "bully",
+        "cuddle",
+        "cry",
+        "hug",
+        "awoo",
+        "kiss",
+        "lick",
+        "pat",
+        "smug",
+        "bonk",
+        "yeet",
+        "blush",
+        "smile",
+        "wave",
+        "highfive",
+        "handhold",
+        "nom",
+        "bite",
+        "glomp",
+        "slap",
+        "kill",
+        "kick",
+        "happy",
+        "wink",
+        "poke",
+        "dance",
+        "cringe",
+    ]
+    if not type in animetypes:
+        return JSONResponse(
+            {
+                "success": 0,
+                "data": {
+                    "errormessage": "That Waifu type does not exist!",
+                    "types": animetypes,
+                },
+            },
+            status_code=404,
+        )
+    async with aiohttp.ClientSession() as session:
+        async with session.get(f"https://api.waifu.pics/sfw/{type}") as resp:
+            if resp.status != 200:
+                return {
+                    "success": 0,
+                    "data": {
+                        "errormessage": "Couldn't fetch the anime picture!",
+                    },
+                }
+            data = await resp.json()
+            url = data["url"]
+            await do_statistics("waifu")
+
+        async with session.get(url) as resp:
+            if resp.status != 200:
+                return {
+                    "success": 0,
+                    "data": {"errormessage": "Couldn't fetch the anime picture!"},
+                }
+            else:
+                waifu_bytes = await resp.read()
+                await do_statistics("waifu")
+                return StreamingResponse(
+                    io.BytesIO(waifu_bytes), media_type="image/png"
+                )
+
+
 @app.get("/songinfo")
 async def song_info(song: str):
     GENIUS_API_URL = "https://api.genius.com"
@@ -465,9 +546,10 @@ async def autofill(query: str):
 @app.get("/dog")
 async def dog():
     await do_statistics("dog")
-    
 
-    meme = await get_meme(random.choice(["dogpictures","lookatmydog", "rarepuppers", "Zoomies"]))
+    meme = await get_meme(
+        random.choice(["dogpictures", "lookatmydog", "rarepuppers", "Zoomies"])
+    )
     async with aiohttp.ClientSession() as resp:
         async with resp.get(meme["url"]) as resp:
             if resp.status != 200:
@@ -478,6 +560,7 @@ async def dog():
             else:
                 meme_bytes = await resp.read()
                 return StreamingResponse(io.BytesIO(meme_bytes), media_type="image/png")
+
 
 @app.get("/cat")
 async def cat():
@@ -494,6 +577,7 @@ async def cat():
                 meme_bytes = await resp.read()
                 return StreamingResponse(io.BytesIO(meme_bytes), media_type="image/png")
 
+
 @app.get("/fox")
 async def fox():
     await do_statistics("fox")
@@ -508,7 +592,6 @@ async def fox():
             else:
                 meme_bytes = await resp.read()
                 return StreamingResponse(io.BytesIO(meme_bytes), media_type="image/png")
-
 
 
 @app.get("/create_meme")
@@ -559,33 +642,38 @@ async def meme_template_headache(text: str):
     meme = MemePy.MemeGenerator.get_meme_image_bytes("headache", args=args)
     return StreamingResponse(meme, media_type="image/png")
 
+
 @app.get("/classnote")
 async def meme_template_classnote(text: str):
-    args = { text}
+    args = {text}
     await do_statistics("itstime")
-    meme = MemePy.MemeGenerator.get_meme_image_bytes("classnote",args=args)
+    meme = MemePy.MemeGenerator.get_meme_image_bytes("classnote", args=args)
     return StreamingResponse(meme, media_type="image/png")
+
 
 @app.get("/nutbutton")
 async def meme_template_nutbutton(text: str):
-    args = { text}
+    args = {text}
     await do_statistics("nutbutton")
-    meme = MemePy.MemeGenerator.get_meme_image_bytes("nutbutton",args=args)
+    meme = MemePy.MemeGenerator.get_meme_image_bytes("nutbutton", args=args)
     return StreamingResponse(meme, media_type="image/png")
+
 
 @app.get("/pills")
-async def meme_template_pills(text:str):
+async def meme_template_pills(text: str):
     args = {text}
     await do_statistics("pills")
-    meme = MemePy.MemeGenerator.get_meme_image_bytes("pills",args=args)
+    meme = MemePy.MemeGenerator.get_meme_image_bytes("pills", args=args)
     return StreamingResponse(meme, media_type="image/png")
 
+
 @app.get("/balloon")
-async def meme_template_balloon(text:str, person:str, stopper:str):
+async def meme_template_balloon(text: str, person: str, stopper: str):
     args = {text, person, stopper}
     await do_statistics("balloon")
-    meme = MemePy.MemeGenerator.get_meme_image_bytes("balloon",args=args)
+    meme = MemePy.MemeGenerator.get_meme_image_bytes("balloon", args=args)
     return StreamingResponse(meme, media_type="image/png")
+
 
 #!#################################################
 # * Undocumented, for personal use
