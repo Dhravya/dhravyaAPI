@@ -4,3 +4,7 @@ pyfiglet
 mcstatus
 qrcode
 Pillow
+lyrics_extractor
+dotenv
+aiofiles
+aiohttp
