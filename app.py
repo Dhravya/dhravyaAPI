@@ -13,12 +13,21 @@ import random
 import io
 import os
 import dotenv
+from lyrics_extractor import SongLyrics
 
+extract_lyrics = SongLyrics(
+    "AIzaSyDqI6SpGbNVb90DiSODoXx7p3gVmfJSv-o", "9a50051dbd6036313"
+)
 
 dotenv.load_dotenv()
 
 from fastapi import FastAPI
-from fastapi.responses import FileResponse, StreamingResponse, RedirectResponse, PlainTextResponse
+from fastapi.responses import (
+    FileResponse,
+    StreamingResponse,
+    RedirectResponse,
+    PlainTextResponse,
+)
 
 from mcstatus import MinecraftServer
 import pyfiglet
@@ -30,6 +39,8 @@ from extras.qr_stuff import _styles
 from extras.meme_fetcher import get_meme, topics_accepted
 from extras.memegenerator import make_meme
 from extras.do_stats import do_statistics
+
+cache = {"Songs": []}
 
 # Defining apps and configs.
 
@@ -73,13 +84,14 @@ FIGLET_FONTS = """3-d, 3x5, 5lineoblique, alphabet, banner3-D,
                     doh, isometric1, letters, alligator, dotmatrix, 
                     bubble, bulbhead, digital"""
 
-# add the Access-Control-Allow-Origin header to allow cross-origin requests 
+# add the Access-Control-Allow-Origin header to allow cross-origin requests
 # from the frontend
 @app.middleware("http")
 async def add_cors_headers(request, call_next):
     response = await call_next(request)
     response.headers["Access-Control-Allow-Origin"] = "*"
     return response
+
 
 #!#################################################
 # * Unimportant stuff, testing, etc
@@ -117,7 +129,7 @@ async def eightball(simple: Optional[str] = "False"):
         "Very doubtful",
     ]
     await do_statistics("8ball")
-    
+
     if simple == "true":
         return PlainTextResponse(random.choice(answers))
     return {"success": 1, "data": {"answer": random.choice(answers)}}
@@ -315,6 +327,91 @@ async def ascii(text: Optional[str] = "No text provided", font: Optional[str] = 
 #!#################################################
 
 
+@app.get("/lyrics")
+async def lyrics(song: str, simple: Optional[str] = "False"):
+    """Returns the lyrics of a song. Requires the song name to function properly."""
+    if f"{song}" in cache["Songs"]:
+        data = cache["Songs"][song]
+        if simple == "true":
+            return PlainTextResponse(data["lyrics"])
+        return {"success": 1, "data": {"lyrics": data}}
+
+    data = extract_lyrics.get_lyrics(f"{song}")
+    cache["Songs"].append(song)
+    cache["Songs"][song]["data"].append(data)
+    if simple == "true":
+        return PlainTextResponse(data["lyrics"])
+    return {"success": 1, "data": {"lyrics": data}}
+
+
+@app.get("/waifu")
+async def waifu(type: Optional[str] = "waifu"):
+    """Returns an image of a waifu. Will return types of Waifus if the type of waifu is invalid. All images are SFW content."""
+    waifu_types = [
+        "waifu",
+        "neko",
+        "shinobu",
+        "megumin",
+        "bully",
+        "cuddle",
+        "cry",
+        "hug",
+        "awoo",
+        "kiss",
+        "lick",
+        "pat",
+        "smug",
+        "bonk",
+        "yeet",
+        "blush",
+        "smile",
+        "wave",
+        "highfive",
+        "handhold",
+        "nom",
+        "bite",
+        "glomp",
+        "slap",
+        "kill",
+        "kick",
+        "happy",
+        "wink",
+        "poke",
+        "dance",
+        "cringe",
+    ]
+    if not type in waifu_types:
+        return {
+            "success": 0,
+            "data": {
+                "errormessage": "That is not a valid Waifu type!",
+                "types": waifu_types,
+            },
+        }
+    async with aiohttp.ClientSession() as session:
+        async with session.get(f"https://api.waifu.pics/sfw/{type}") as resp:
+            if resp.status != 200:
+                return {
+                    "success": 0,
+                    "data": {
+                        "errormessage": "Couldn't fetch the Waifu Image!",
+                    },
+                }
+            data = await resp.json()
+            url = data["url"]
+
+        async with session.get(url) as resp:
+            if resp.status != 200:
+                return {
+                    "success": 0,
+                    "data": {"errormessage": "Couldn't fetch the Waifu Image!"},
+                }
+            else:
+                meme_bytes = await resp.read()
+                await do_statistics("waifu")
+                return StreamingResponse(io.BytesIO(meme_bytes), media_type="image/png")
+
+
 @app.get("/songinfo")
 async def song_info(song: str):
     GENIUS_API_URL = "https://api.genius.com"
@@ -465,9 +562,10 @@ async def autofill(query: str):
 @app.get("/dog")
 async def dog():
     await do_statistics("dog")
-    
 
-    meme = await get_meme(random.choice(["dogpictures","lookatmydog", "rarepuppers", "Zoomies"]))
+    meme = await get_meme(
+        random.choice(["dogpictures", "lookatmydog", "rarepuppers", "Zoomies"])
+    )
     async with aiohttp.ClientSession() as resp:
         async with resp.get(meme["url"]) as resp:
             if resp.status != 200:
@@ -478,6 +576,7 @@ async def dog():
             else:
                 meme_bytes = await resp.read()
                 return StreamingResponse(io.BytesIO(meme_bytes), media_type="image/png")
+
 
 @app.get("/cat")
 async def cat():
@@ -494,6 +593,7 @@ async def cat():
                 meme_bytes = await resp.read()
                 return StreamingResponse(io.BytesIO(meme_bytes), media_type="image/png")
 
+
 @app.get("/fox")
 async def fox():
     await do_statistics("fox")
@@ -508,7 +608,6 @@ async def fox():
             else:
                 meme_bytes = await resp.read()
                 return StreamingResponse(io.BytesIO(meme_bytes), media_type="image/png")
-
 
 
 @app.get("/create_meme")
@@ -559,33 +658,38 @@ async def meme_template_headache(text: str):
     meme = MemePy.MemeGenerator.get_meme_image_bytes("headache", args=args)
     return StreamingResponse(meme, media_type="image/png")
 
+
 @app.get("/classnote")
 async def meme_template_classnote(text: str):
-    args = { text}
+    args = {text}
     await do_statistics("itstime")
-    meme = MemePy.MemeGenerator.get_meme_image_bytes("classnote",args=args)
+    meme = MemePy.MemeGenerator.get_meme_image_bytes("classnote", args=args)
     return StreamingResponse(meme, media_type="image/png")
+
 
 @app.get("/nutbutton")
 async def meme_template_nutbutton(text: str):
-    args = { text}
+    args = {text}
     await do_statistics("nutbutton")
-    meme = MemePy.MemeGenerator.get_meme_image_bytes("nutbutton",args=args)
+    meme = MemePy.MemeGenerator.get_meme_image_bytes("nutbutton", args=args)
     return StreamingResponse(meme, media_type="image/png")
+
 
 @app.get("/pills")
-async def meme_template_pills(text:str):
+async def meme_template_pills(text: str):
     args = {text}
     await do_statistics("pills")
-    meme = MemePy.MemeGenerator.get_meme_image_bytes("pills",args=args)
+    meme = MemePy.MemeGenerator.get_meme_image_bytes("pills", args=args)
     return StreamingResponse(meme, media_type="image/png")
 
+
 @app.get("/balloon")
-async def meme_template_balloon(text:str, person:str, stopper:str):
+async def meme_template_balloon(text: str, person: str, stopper: str):
     args = {text, person, stopper}
     await do_statistics("balloon")
-    meme = MemePy.MemeGenerator.get_meme_image_bytes("balloon",args=args)
+    meme = MemePy.MemeGenerator.get_meme_image_bytes("balloon", args=args)
     return StreamingResponse(meme, media_type="image/png")
+
 
 #!#################################################
 # * Undocumented, for personal use
