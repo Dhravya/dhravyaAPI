@@ -12,10 +12,12 @@ import aiohttp
 import random
 import io
 import os
-import dotenv
+from lyrics_extractor import SongLyrics
 
+extract_lyrics = SongLyrics(
+    "AIzaSyDqI6SpGbNVb90DiSODoXx7p3gVmfJSv-o", "9a50051dbd6036313"
+)
 
-dotenv.load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.responses import (
@@ -23,7 +25,6 @@ from fastapi.responses import (
     StreamingResponse,
     RedirectResponse,
     PlainTextResponse,
-    JSONResponse,
 )
 
 from mcstatus import MinecraftServer
@@ -36,6 +37,8 @@ from extras.qr_stuff import _styles
 from extras.meme_fetcher import get_meme, topics_accepted
 from extras.memegenerator import make_meme
 from extras.do_stats import do_statistics
+
+cache = {"Songs": {}}
 
 # Defining apps and configs.
 
@@ -322,10 +325,27 @@ async def ascii(text: Optional[str] = "No text provided", font: Optional[str] = 
 #!#################################################
 
 
+@app.get("/lyrics")
+async def lyrics(song: str, simple: Optional[str] = "False"):
+    """Returns the lyrics of a song. Requires the song name to function properly."""
+    if f"{song}" in cache["Songs"]:
+        data = cache["Songs"][song]
+        if simple == "true":
+            return PlainTextResponse(data["lyrics"])
+        return {"success": 1, "data": {"lyrics": data}}
+
+    data = extract_lyrics.get_lyrics(f"{song}")
+    cache["Songs"][str(song)] = data
+
+    if simple == "true":
+        return PlainTextResponse(data["lyrics"])
+    return {"success": 1, "data": {"lyrics": data}}
+
+
 @app.get("/waifu")
 async def waifu(type: Optional[str] = "waifu"):
-    """Grabs a picture of a (SFW) Waifu. Will return types of anime if the type chosen is not valid."""
-    animetypes = [
+    """Returns an image of a waifu. Will return types of Waifus if the type of waifu is invalid. All images are SFW content."""
+    waifu_types = [
         "waifu",
         "neko",
         "shinobu",
@@ -358,42 +378,36 @@ async def waifu(type: Optional[str] = "waifu"):
         "dance",
         "cringe",
     ]
-    if not type in animetypes:
-        return JSONResponse(
-            {
-                "success": 0,
-                "data": {
-                    "errormessage": "That Waifu type does not exist!",
-                    "types": animetypes,
-                },
+    if not type in waifu_types:
+        return {
+            "success": 0,
+            "data": {
+                "errormessage": "That is not a valid Waifu type!",
+                "types": waifu_types,
             },
-            status_code=404,
-        )
+        }
     async with aiohttp.ClientSession() as session:
         async with session.get(f"https://api.waifu.pics/sfw/{type}") as resp:
             if resp.status != 200:
                 return {
                     "success": 0,
                     "data": {
-                        "errormessage": "Couldn't fetch the anime picture!",
+                        "errormessage": "Couldn't fetch the Waifu Image!",
                     },
                 }
             data = await resp.json()
             url = data["url"]
-            await do_statistics("waifu")
 
         async with session.get(url) as resp:
             if resp.status != 200:
                 return {
                     "success": 0,
-                    "data": {"errormessage": "Couldn't fetch the anime picture!"},
+                    "data": {"errormessage": "Couldn't fetch the Waifu Image!"},
                 }
             else:
-                waifu_bytes = await resp.read()
+                meme_bytes = await resp.read()
                 await do_statistics("waifu")
-                return StreamingResponse(
-                    io.BytesIO(waifu_bytes), media_type="image/png"
-                )
+                return StreamingResponse(io.BytesIO(meme_bytes), media_type="image/png")
 
 
 @app.get("/songinfo")
