@@ -12,14 +12,12 @@ import aiohttp
 import random
 import io
 import os
-import dotenv
 from lyrics_extractor import SongLyrics
 
 extract_lyrics = SongLyrics(
     "AIzaSyDqI6SpGbNVb90DiSODoXx7p3gVmfJSv-o", "9a50051dbd6036313"
 )
 
-dotenv.load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.responses import (
@@ -40,7 +38,7 @@ from extras.meme_fetcher import get_meme, topics_accepted
 from extras.memegenerator import make_meme
 from extras.do_stats import do_statistics
 
-cache = {"Songs": []}
+cache = {"Songs": {}}
 
 # Defining apps and configs.
 
@@ -337,8 +335,8 @@ async def lyrics(song: str, simple: Optional[str] = "False"):
         return {"success": 1, "data": {"lyrics": data}}
 
     data = extract_lyrics.get_lyrics(f"{song}")
-    cache["Songs"].append(song)
-    cache["Songs"][song]["data"].append(data)
+    cache["Songs"][str(song)] = data
+
     if simple == "true":
         return PlainTextResponse(data["lyrics"])
     return {"success": 1, "data": {"lyrics": data}}
