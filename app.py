@@ -12,12 +12,11 @@ import aiohttp
 import random
 import io
 import os
-from lyrics_extractor import SongLyrics
+import dotenv
+import requests
+import re
 
-extract_lyrics = SongLyrics(
-    "AIzaSyDqI6SpGbNVb90DiSODoXx7p3gVmfJSv-o", "9a50051dbd6036313"
-)
-
+dotenv.load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.responses import (
@@ -27,6 +26,7 @@ from fastapi.responses import (
     PlainTextResponse,
 )
 
+from bs4 import BeautifulSoup
 from mcstatus import MinecraftServer
 import pyfiglet
 import qrcode
@@ -324,23 +324,44 @@ async def ascii(text: Optional[str] = "No text provided", font: Optional[str] = 
 # * Use of other apis
 #!#################################################
 
+def scrape_song_lyrics(url):
+    page = requests.get(url)
+    html = BeautifulSoup(page.text, 'html.parser')
+    lyrics = html.find('div', class_='lyrics').get_text()
+    #remove identifiers like chorus, verse, etc
+    lyrics = re.sub(r'[\(\[].*?[\)\]]', '', lyrics)
+    #remove empty lines
+    lyrics = os.linesep.join([s for s in lyrics.splitlines() if s])         
+    return lyrics
 
 @app.get("/lyrics")
 async def lyrics(song: str, simple: Optional[str] = "False"):
     """Returns the lyrics of a song. Requires the song name to function properly."""
-    if f"{song}" in cache["Songs"]:
-        data = cache["Songs"][song]
-        if simple == "true":
-            return PlainTextResponse(data["lyrics"])
-        return {"success": 1, "data": {"lyrics": data}}
+    # Search for the song on genius
+    GENIUS_API_URL = "https://api.genius.com"
+    headers = {"Authorization": f'Bearer {os.environ.get("GENIUS_API_KEY")}'}
+    params = {"q": song}
 
-    data = extract_lyrics.get_lyrics(f"{song}")
-    cache["Songs"][str(song)] = data
+    async with aiohttp.ClientSession() as session:
+        async with session.get(
+            GENIUS_API_URL + "/search", params=params, headers=headers
+        ) as resp:
+            data = await resp.json()
+            song_url= data["response"]["hits"][0]["result"]["url"]
+    
+    return scrape_song_lyrics(song_url)
 
-    if simple == "true":
-        return PlainTextResponse(data["lyrics"])
-    return {"success": 1, "data": {"lyrics": data}}
-
+@app.get("/coin_value")
+async def crypto_info(crypto: str, simple: Optional[str] = "False"):
+    """Returns the price of a crypto currency"""
+    url =  f"https://api.coinpaprika.com/v1/coins/{crypto}"
+    do_statistics("coin_value")
+    async with aiohttp.ClientSession() as resp:
+        async with resp.get(url) as resp:
+            data = await resp.json()
+            if simple == "true":
+                return PlainTextResponse(f"{data['name']} is worth {data['price_usd']} USD")
+            return {"success": 1, "data": {crypto: data}}
 
 @app.get("/waifu")
 async def waifu(type: Optional[str] = "waifu"):
@@ -413,20 +434,13 @@ async def waifu(type: Optional[str] = "waifu"):
 @app.get("/songinfo")
 async def song_info(song: str):
     GENIUS_API_URL = "https://api.genius.com"
-    headers = {"Authorization": f'Bearer {os.environ["GENIUS_API_KEY"]}'}
+    headers = {"Authorization": f'Bearer {os.environ.get("GENIUS_API_KEY")}'}
     params = {"q": song}
 
     async with aiohttp.ClientSession() as session:
         async with session.get(
             GENIUS_API_URL + "/search", params=params, headers=headers
         ) as resp:
-            if resp.status != 200:
-                return {
-                    "success": 0,
-                    "data": {
-                        "errormessage": "Couldn't fetch the song info!",
-                    },
-                }
             data = await resp.json()
 
         await do_statistics("song_info")
