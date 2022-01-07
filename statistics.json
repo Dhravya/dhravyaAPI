@@ -18,10 +18,17 @@
     "itsretarded": 6,
     "wyr": 6,
     "topic": 55,
+<<<<<<< HEAD
     "song_info": 5,
     "dog": 118,
     "joke": 11,
     "compliment": 23,
+=======
+    "song_info": 4,
+    "dog": 111,
+    "joke": 8,
+    "compliment": 22,
+>>>>>>> 9726257d9c7bd2291d98fe4ac685d2312dde399b
     "fox": 13,
     "waifu": 7
 }

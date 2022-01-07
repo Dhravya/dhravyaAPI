@@ -12,11 +12,6 @@ import aiohttp
 import random
 import io
 import os
-import dotenv
-import requests
-import re
-
-dotenv.load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.responses import (
@@ -324,32 +319,66 @@ async def ascii(text: Optional[str] = "No text provided", font: Optional[str] = 
 # * Use of other apis
 #!#################################################
 
-def scrape_song_lyrics(url):
-    page = requests.get(url)
-    html = BeautifulSoup(page.text, 'html.parser')
-    lyrics = html.find('div', class_='lyrics').get_text()
-    #remove identifiers like chorus, verse, etc
-    lyrics = re.sub(r'[\(\[].*?[\)\]]', '', lyrics)
-    #remove empty lines
-    lyrics = os.linesep.join([s for s in lyrics.splitlines() if s])         
-    return lyrics
 
 @app.get("/lyrics")
 async def lyrics(song: str, simple: Optional[str] = "False"):
-    """Returns the lyrics of a song. Requires the song name to function properly."""
-    # Search for the song on genius
-    GENIUS_API_URL = "https://api.genius.com"
-    headers = {"Authorization": f'Bearer {os.environ.get("GENIUS_API_KEY")}'}
-    params = {"q": song}
+    """Returns the lyrics of a song. Requires the song name to function properly. Can also add the artist on the end for more accurate results!"""
+    if f"{song}" in cache["Songs"]:
+        data = cache["Songs"][song]
+        if simple == "true":
+            return PlainTextResponse(data)
+        return {"success": 1, "data": {"lyrics": data}}
 
     async with aiohttp.ClientSession() as session:
         async with session.get(
-            GENIUS_API_URL + "/search", params=params, headers=headers
+            f"https://some-random-api.ml/lyrics?title={song}"
         ) as resp:
-            data = await resp.json()
-            song_url= data["response"]["hits"][0]["result"]["url"]
-    
-    return scrape_song_lyrics(song_url)
+            if resp.status != 200:
+                GENIUS_API_URL = "https://api.genius.com"
+                headers = {
+                    "Authorization": f"Bearer H-KtNuYpHYXoBJqkt_uScjLamVMBmPOUqinXD2fAS9ictcy2c83ZeeCUHPJticwe"
+                }
+                params = {"q": song}
+
+                async with session.get(
+                    GENIUS_API_URL + "/search", params=params, headers=headers
+                ) as resp:
+                    if resp.status != 200:
+                        return {
+                            "success": 0,
+                            "data": {
+                                "errormessage": "Couldn't fetch the Lyrics!",
+                                "backup": "V1",
+                            },
+                        }
+                    data = await resp.json()
+                    song_artist = data["response"]["hits"][0]["result"][
+                        "primary_artist"
+                    ]["name"]
+                    # https://api.lyrics.ovh/v1/artist/title
+                    async with session.get(
+                        f"https://api.lyrics.ovh/v1/{song_artist}/{song}"
+                    ) as resp:
+                        if resp.status != 200:
+                            print(song, "\n", song_artist)
+                            return {
+                                "success": 0,
+                                "data": {
+                                    "errormessage": "Couldn't fetch the Lyrics!",
+                                    "backup": "V2",
+                                },
+                            }
+                        data = await resp.json()
+                        lyrics = data["lyrics"]
+            else:
+                data = await resp.json()
+                lyrics = data["lyrics"]
+    cache["Songs"][str(song)] = lyrics
+
+    if simple == "true":
+        return PlainTextResponse(lyrics)
+    return {"success": 1, "data": {"lyrics": lyrics}}
+
 
 @app.get("/coin_value")
 async def crypto_info(crypto: str, simple: Optional[str] = "False"):
@@ -434,7 +463,9 @@ async def waifu(type: Optional[str] = "waifu"):
 @app.get("/songinfo")
 async def song_info(song: str):
     GENIUS_API_URL = "https://api.genius.com"
-    headers = {"Authorization": f'Bearer {os.environ.get("GENIUS_API_KEY")}'}
+    headers = {
+        "Authorization": f"Bearer H-KtNuYpHYXoBJqkt_uScjLamVMBmPOUqinXD2fAS9ictcy2c83ZeeCUHPJticwe"
+    }
     params = {"q": song}
 
     async with aiohttp.ClientSession() as session:
