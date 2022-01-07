@@ -14,11 +14,6 @@ import io
 import os
 from lyrics_extractor import SongLyrics
 
-extract_lyrics = SongLyrics(
-    "AIzaSyDqI6SpGbNVb90DiSODoXx7p3gVmfJSv-o", "9a50051dbd6036313"
-)
-
-
 from fastapi import FastAPI
 from fastapi.responses import (
     FileResponse,
@@ -327,19 +322,62 @@ async def ascii(text: Optional[str] = "No text provided", font: Optional[str] = 
 
 @app.get("/lyrics")
 async def lyrics(song: str, simple: Optional[str] = "False"):
-    """Returns the lyrics of a song. Requires the song name to function properly."""
+    """Returns the lyrics of a song. Requires the song name to function properly. Can also add the artist on the end for more accurate results!"""
     if f"{song}" in cache["Songs"]:
         data = cache["Songs"][song]
         if simple == "true":
-            return PlainTextResponse(data["lyrics"])
+            return PlainTextResponse(data)
         return {"success": 1, "data": {"lyrics": data}}
 
-    data = extract_lyrics.get_lyrics(f"{song}")
-    cache["Songs"][str(song)] = data
+    async with aiohttp.ClientSession() as session:
+        async with session.get(
+            f"https://some-random-api.ml/lyrics?title={song}"
+        ) as resp:
+            if resp.status != 200:
+                GENIUS_API_URL = "https://api.genius.com"
+                headers = {
+                    "Authorization": f"Bearer H-KtNuYpHYXoBJqkt_uScjLamVMBmPOUqinXD2fAS9ictcy2c83ZeeCUHPJticwe"
+                }
+                params = {"q": song}
+
+                async with session.get(
+                    GENIUS_API_URL + "/search", params=params, headers=headers
+                ) as resp:
+                    if resp.status != 200:
+                        return {
+                            "success": 0,
+                            "data": {
+                                "errormessage": "Couldn't fetch the Lyrics!",
+                                "backup": "V1",
+                            },
+                        }
+                    data = await resp.json()
+                    song_artist = data["response"]["hits"][0]["result"][
+                        "primary_artist"
+                    ]["name"]
+                    # https://api.lyrics.ovh/v1/artist/title
+                    async with session.get(
+                        f"https://api.lyrics.ovh/v1/{song_artist}/{song}"
+                    ) as resp:
+                        if resp.status != 200:
+                            print(song, "\n", song_artist)
+                            return {
+                                "success": 0,
+                                "data": {
+                                    "errormessage": "Couldn't fetch the Lyrics!",
+                                    "backup": "V2",
+                                },
+                            }
+                        data = await resp.json()
+                        lyrics = data["lyrics"]
+            else:
+                data = await resp.json()
+                lyrics = data["lyrics"]
+    cache["Songs"][str(song)] = lyrics
 
     if simple == "true":
-        return PlainTextResponse(data["lyrics"])
-    return {"success": 1, "data": {"lyrics": data}}
+        return PlainTextResponse(lyrics)
+    return {"success": 1, "data": {"lyrics": lyrics}}
 
 
 @app.get("/waifu")
@@ -413,7 +451,9 @@ async def waifu(type: Optional[str] = "waifu"):
 @app.get("/songinfo")
 async def song_info(song: str):
     GENIUS_API_URL = "https://api.genius.com"
-    headers = {"Authorization": f'Bearer {os.environ["GENIUS_API_KEY"]}'}
+    headers = {
+        "Authorization": f"Bearer H-KtNuYpHYXoBJqkt_uScjLamVMBmPOUqinXD2fAS9ictcy2c83ZeeCUHPJticwe"
+    }
     params = {"q": song}
 
     async with aiohttp.ClientSession() as session:
