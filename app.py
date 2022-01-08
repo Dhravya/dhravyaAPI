@@ -485,6 +485,13 @@ async def song_info(song: str):
         async with session.get(
             GENIUS_API_URL + "/search", params=params, headers=headers
         ) as resp:
+            if resp.status != 200:
+                return {
+                    "success": 0,
+                    "data": {
+                        "errormessage": "Couldn't fetch the song info!",
+                    },
+                }
             data = await resp.json()
 
         await do_statistics("song_info")
