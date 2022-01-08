@@ -12,7 +12,7 @@ import aiohttp
 import random
 import io
 import os
-import sqlite3
+import aiosqlite
 
 from fastapi import FastAPI
 from fastapi.responses import (
@@ -34,7 +34,6 @@ from extras.meme_fetcher import get_meme, topics_accepted
 from extras.memegenerator import make_meme
 from extras.do_stats import do_statistics
 
-lyricsDB = sqlite3.connect("lyrics.db")
 # Defining apps and configs.
 
 description = """
@@ -73,7 +72,6 @@ app = FastAPI(
     openapi_url="/v2/openapi.json",
 )
 
-lyricsDB.execute("CREATE TABLE IF NOT EXISTS songs (song TEXT, lyrics TEXT)")
 
 FIGLET_FONTS = """3-d, 3x5, 5lineoblique, alphabet, banner3-D, 
                     doh, isometric1, letters, alligator, dotmatrix, 
@@ -326,13 +324,16 @@ async def ascii(text: Optional[str] = "No text provided", font: Optional[str] = 
 async def lyrics(song: str, simple: Optional[str] = "False"):
     """Returns the lyrics of a song. Requires the song name to function properly. Can also add the artist on the end for more accurate results!"""
 
-
-    tryf = lyricsDB.execute("SELECT * FROM songs WHERE song = ?", (song,))
-    data = tryf.fetchone()
-    if data is not None:
-        if simple == "true":
-            return PlainTextResponse(data[1])
-        return {"success": 1, "data": {"lyrics": data[1]}}
+    async with aiosqlite.connect("./lyrics.db") as db:
+        cursor = await db.execute(
+            "SELECT * FROM songs WHERE song = ?", (song,),
+        )
+        data = await cursor.fetchall()
+        print(data[0][1])
+        if data is not None:
+            if simple == "true":
+                return PlainTextResponse(data[0][1])
+            return {"success": 1, "data": {"lyrics": data[0][1]}}
 
     async with aiohttp.ClientSession() as session:
         async with session.get(
@@ -380,10 +381,12 @@ async def lyrics(song: str, simple: Optional[str] = "False"):
                 lyrics = data["lyrics"]
     
     
-    lyricsDB.execute(
-        "INSERT INTO songs VALUES (?, ?)", (song, lyrics)
-    )
-    lyricsDB.commit()
+    async with aiosqlite.connect("./lyrics.db") as db:
+        await db.execute(
+            "INSERT INTO songs VALUES (?, ?)", (song, lyrics),
+        )
+        await db.commit()
+
 
     if simple == "true":
         return PlainTextResponse(lyrics)
