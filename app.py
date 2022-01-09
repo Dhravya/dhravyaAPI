@@ -20,6 +20,7 @@ from fastapi.responses import (
     StreamingResponse,
     RedirectResponse,
     PlainTextResponse,
+    JSONResponse,
 )
 
 from bs4 import BeautifulSoup
@@ -247,12 +248,45 @@ async def wyr(simple: Optional[str] = "False"):
     return {"success": 1, "data": {"Would you rather": question}}
 
 
+@app.get("/truthordare")
+async def truthordare(type: str, simple: Optional[str] = "False"):
+    """Returns a Truth or Dare (depending on ?type)"""
+    if type == "truth":
+        await do_statistics("truthordare")
+        async with aiofiles.open("./data/txt/truth.txt", "r", encoding="utf8") as f:
+            data = await f.readlines()
+        question = data[random.randrange(0, len(data))][:-1]
+
+        if simple == "true":
+            return PlainTextResponse(f"{question}")
+        return {"success": 1, "data": {"Truth": question}}
+    if type == "dare":
+        await do_statistics("truthordare")
+        async with aiofiles.open("./data/txt/dare.txt", "r", encoding="utf8") as f:
+            data = await f.readlines()
+        question = data[random.randrange(0, len(data))][:-1]
+
+        if simple == "true":
+            return PlainTextResponse(f"{question}")
+        return {"success": 1, "data": {"Dare": question}}
+    else:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "success": 0,
+                "data": {
+                    "errormessage": "That is not either Truth or Dare!",
+                },
+            },
+        )
+
+
 @app.get("/joke")
 async def joke(simple: Optional[str] = "False"):
     """Returns a joke"""
     async with aiofiles.open("./data/txt/jokes.txt", "r", encoding="utf8") as f:
         data = await f.readlines()
-    joke = data[random.randrange(0, len(data))][:-2]
+    joke = data[random.randrange(0, len(data))][:-1]
 
     await do_statistics("joke")
     if simple == "true":
@@ -263,14 +297,29 @@ async def joke(simple: Optional[str] = "False"):
 @app.get("/compliment")
 async def compliment(simple: Optional[str] = "False"):
     """Returns a compliment"""
-    async with aiofiles.open("./data/txt/compliments.txt", "r") as f:
+    async with aiofiles.open("./data/txt/compliments.txt", "r", encoding="utf8") as f:
         data = await f.readlines()
-    compliment = data[random.randrange(0, len(data))][:-2]
+    compliment = data[random.randrange(0, len(data))][:-1]
 
     await do_statistics("compliment")
     if simple == "true":
         return PlainTextResponse(compliment)
     return {"success": 1, "data": {"Compliment": compliment}}
+
+
+@app.get("/neverhaveiever")
+async def topic(simple: Optional[str] = "False"):
+    """Returns a Never Have I Ever."""
+    async with aiofiles.open(
+        "./data/txt/neverhaveiever.txt", "r", encoding="utf8"
+    ) as f:
+        data = await f.readlines()
+    nhie = data[random.randrange(0, len(data))][:-1]
+
+    await do_statistics("neverhaveiever")
+    if simple == "true":
+        return PlainTextResponse(nhie)
+    return {"success": 1, "data": {"Topic": nhie}}
 
 
 @app.get("/topic")
@@ -326,7 +375,8 @@ async def lyrics(song: str, simple: Optional[str] = "False"):
 
     async with aiosqlite.connect("./lyrics.db") as db:
         cursor = await db.execute(
-            "SELECT * FROM songs WHERE song = ?", (song,),
+            "SELECT * FROM songs WHERE song = ?",
+            (song,),
         )
         data = await cursor.fetchall()
         print(data[0][1])
@@ -379,14 +429,13 @@ async def lyrics(song: str, simple: Optional[str] = "False"):
             else:
                 data = await resp.json()
                 lyrics = data["lyrics"]
-    
-    
+
     async with aiosqlite.connect("./lyrics.db") as db:
         await db.execute(
-            "INSERT INTO songs VALUES (?, ?)", (song, lyrics),
+            "INSERT INTO songs VALUES (?, ?)",
+            (song, lyrics),
         )
         await db.commit()
-
 
     if simple == "true":
         return PlainTextResponse(lyrics)
@@ -396,14 +445,17 @@ async def lyrics(song: str, simple: Optional[str] = "False"):
 @app.get("/coin_value")
 async def crypto_info(crypto: str, simple: Optional[str] = "False"):
     """Returns the price of a crypto currency"""
-    url =  f"https://api.coinpaprika.com/v1/coins/{crypto}"
+    url = f"https://api.coinpaprika.com/v1/coins/{crypto}"
     do_statistics("coin_value")
     async with aiohttp.ClientSession() as resp:
         async with resp.get(url) as resp:
             data = await resp.json()
             if simple == "true":
-                return PlainTextResponse(f"{data['name']} is worth {data['price_usd']} USD")
+                return PlainTextResponse(
+                    f"{data['name']} is worth {data['price_usd']} USD"
+                )
             return {"success": 1, "data": {crypto: data}}
+
 
 @app.get("/waifu")
 async def waifu(type: Optional[str] = "waifu"):
