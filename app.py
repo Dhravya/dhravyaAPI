@@ -308,7 +308,7 @@ async def compliment(simple: Optional[str] = "False"):
 
 
 @app.get("/neverhaveiever")
-async def topic(simple: Optional[str] = "False"):
+async def neverhaveiever(simple: Optional[str] = "False"):
     """Returns a Never Have I Ever."""
     async with aiofiles.open(
         "./data/txt/neverhaveiever.txt", "r", encoding="utf8"
