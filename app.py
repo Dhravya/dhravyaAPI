@@ -12,12 +12,7 @@ import aiohttp
 import random
 import io
 import os
-from lyrics_extractor import SongLyrics
-
-extract_lyrics = SongLyrics(
-    "AIzaSyDqI6SpGbNVb90DiSODoXx7p3gVmfJSv-o", "9a50051dbd6036313"
-)
-
+import aiosqlite
 
 from fastapi import FastAPI
 from fastapi.responses import (
@@ -25,8 +20,10 @@ from fastapi.responses import (
     StreamingResponse,
     RedirectResponse,
     PlainTextResponse,
+    JSONResponse,
 )
 
+from bs4 import BeautifulSoup
 from mcstatus import MinecraftServer
 import pyfiglet
 import qrcode
@@ -37,8 +34,6 @@ from extras.qr_stuff import _styles
 from extras.meme_fetcher import get_meme, topics_accepted
 from extras.memegenerator import make_meme
 from extras.do_stats import do_statistics
-
-cache = {"Songs": {}}
 
 # Defining apps and configs.
 
@@ -77,6 +72,7 @@ app = FastAPI(
     version="2.0",
     openapi_url="/v2/openapi.json",
 )
+
 
 FIGLET_FONTS = """3-d, 3x5, 5lineoblique, alphabet, banner3-D, 
                     doh, isometric1, letters, alligator, dotmatrix, 
@@ -252,12 +248,55 @@ async def wyr(simple: Optional[str] = "False"):
     return {"success": 1, "data": {"Would you rather": question}}
 
 
+@app.get("/truthordare")
+async def truthordare(simple: Optional[str] = "False"):
+    """Returns a Truth and Dare."""
+    await do_statistics("truthordare")
+    async with aiofiles.open("./data/txt/truth.txt", "r", encoding="utf8") as f:
+        data = await f.readlines()
+    question = data[random.randrange(0, len(data))][:-1]
+
+    async with aiofiles.open("./data/txt/dare.txt", "r", encoding="utf8") as f:
+        data = await f.readlines()
+    question2 = data[random.randrange(0, len(data))][:-1]
+
+    if simple == "true":
+        return PlainTextResponse(f"{question} - {question2}")
+    return {"success": 1, "data": {"Truth": question, "Dare": question2}}
+
+
+@app.get("/truth")
+async def truth(simple: Optional[str] = "False"):
+    """Returns a Truth."""
+    await do_statistics("truthordare")
+    async with aiofiles.open("./data/txt/truth.txt", "r", encoding="utf8") as f:
+        data = await f.readlines()
+    question = data[random.randrange(0, len(data))[:-1]]
+
+    if simple == "true":
+        return PlainTextResponse(f"{question}")
+    return {"success": 1, "data": {"Truth": question}}
+
+
+@app.get("/dare")
+async def truth(simple: Optional[str] = "False"):
+    """Returns a Dare."""
+    await do_statistics("truthordare")
+    async with aiofiles.open("./data/txt/dare.txt", "r", encoding="utf8") as f:
+        data = await f.readlines()
+    question = data[random.randrange(0, len(data))[:-1]]
+
+    if simple == "true":
+        return PlainTextResponse(f"{question}")
+    return {"success": 1, "data": {"Dare": question}}
+
+
 @app.get("/joke")
 async def joke(simple: Optional[str] = "False"):
     """Returns a joke"""
     async with aiofiles.open("./data/txt/jokes.txt", "r", encoding="utf8") as f:
         data = await f.readlines()
-    joke = data[random.randrange(0, len(data))][:-2]
+    joke = data[random.randrange(0, len(data))][:-1]
 
     await do_statistics("joke")
     if simple == "true":
@@ -268,14 +307,29 @@ async def joke(simple: Optional[str] = "False"):
 @app.get("/compliment")
 async def compliment(simple: Optional[str] = "False"):
     """Returns a compliment"""
-    async with aiofiles.open("./data/txt/compliments.txt", "r") as f:
+    async with aiofiles.open("./data/txt/compliments.txt", "r", encoding="utf8") as f:
         data = await f.readlines()
-    compliment = data[random.randrange(0, len(data))][:-2]
+    compliment = data[random.randrange(0, len(data))][:-1]
 
     await do_statistics("compliment")
     if simple == "true":
         return PlainTextResponse(compliment)
     return {"success": 1, "data": {"Compliment": compliment}}
+
+
+@app.get("/neverhaveiever")
+async def neverhaveiever(simple: Optional[str] = "False"):
+    """Returns a Never Have I Ever."""
+    async with aiofiles.open(
+        "./data/txt/neverhaveiever.txt", "r", encoding="utf8"
+    ) as f:
+        data = await f.readlines()
+    nhie = data[random.randrange(0, len(data))][:-1]
+
+    await do_statistics("neverhaveiever")
+    if simple == "true":
+        return PlainTextResponse(nhie)
+    return {"success": 1, "data": {"Topic": nhie}}
 
 
 @app.get("/topic")
@@ -327,19 +381,92 @@ async def ascii(text: Optional[str] = "No text provided", font: Optional[str] = 
 
 @app.get("/lyrics")
 async def lyrics(song: str, simple: Optional[str] = "False"):
-    """Returns the lyrics of a song. Requires the song name to function properly."""
-    if f"{song}" in cache["Songs"]:
-        data = cache["Songs"][song]
-        if simple == "true":
-            return PlainTextResponse(data["lyrics"])
-        return {"success": 1, "data": {"lyrics": data}}
+    """Returns the lyrics of a song. Requires the song name to function properly. Can also add the artist on the end for more accurate results!"""
 
-    data = extract_lyrics.get_lyrics(f"{song}")
-    cache["Songs"][str(song)] = data
+    async with aiosqlite.connect("./lyrics.db") as db:
+        cursor = await db.execute(
+            "SELECT * FROM songs WHERE song = ?",
+            (song,),
+        )
+        data = await cursor.fetchall()
+        o = data
+        notempty = bool(o)
+        if data is not None:
+            if notempty is True:
+                if simple == "true":
+                    return PlainTextResponse(data[0][1])
+                return {"success": 1, "data": {"lyrics": data[0][1]}}
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(
+            f"https://some-random-api.ml/lyrics?title={song}"
+        ) as resp:
+            if resp.status != 200:
+                GENIUS_API_URL = "https://api.genius.com"
+                headers = {
+                    "Authorization": f"Bearer H-KtNuYpHYXoBJqkt_uScjLamVMBmPOUqinXD2fAS9ictcy2c83ZeeCUHPJticwe"
+                }
+                params = {"q": song}
+
+                async with session.get(
+                    GENIUS_API_URL + "/search", params=params, headers=headers
+                ) as resp:
+                    if resp.status != 200:
+                        return {
+                            "success": 0,
+                            "data": {
+                                "errormessage": "Couldn't fetch the Lyrics!",
+                                "backup": "V1",
+                            },
+                        }
+                    data = await resp.json()
+                    song_artist = data["response"]["hits"][0]["result"][
+                        "primary_artist"
+                    ]["name"]
+                    # https://api.lyrics.ovh/v1/artist/title
+                    async with session.get(
+                        f"https://api.lyrics.ovh/v1/{song_artist}/{song}"
+                    ) as resp:
+                        if resp.status != 200:
+                            print(song, "\n", song_artist)
+                            return {
+                                "success": 0,
+                                "data": {
+                                    "errormessage": "Couldn't fetch the Lyrics!",
+                                    "backup": "V2",
+                                },
+                            }
+                        data = await resp.json()
+                        lyrics = data["lyrics"]
+            else:
+                data = await resp.json()
+                lyrics = data["lyrics"]
+
+    async with aiosqlite.connect("./lyrics.db") as db:
+        await db.execute(
+            "INSERT INTO songs VALUES (?, ?)",
+            (song, lyrics),
+        )
+        await db.commit()
 
     if simple == "true":
-        return PlainTextResponse(data["lyrics"])
-    return {"success": 1, "data": {"lyrics": data}}
+        return PlainTextResponse(lyrics)
+    return {"success": 1, "data": {"lyrics": lyrics}}
+
+
+@app.get("/coin_value")
+async def crypto_info(crypto: str, simple: Optional[str] = "False"):
+    """Returns the price of a crypto currency"""
+    url = f"https://api.coinpaprika.com/v1/coins/{crypto}"
+    do_statistics("coin_value")
+    async with aiohttp.ClientSession() as resp:
+        async with resp.get(url) as resp:
+            data = await resp.json()
+            if simple == "true":
+                return PlainTextResponse(
+                    f"{data['name']} is worth {data['price_usd']} USD"
+                )
+            return {"success": 1, "data": {crypto: data}}
 
 
 @app.get("/waifu")
@@ -413,7 +540,9 @@ async def waifu(type: Optional[str] = "waifu"):
 @app.get("/songinfo")
 async def song_info(song: str):
     GENIUS_API_URL = "https://api.genius.com"
-    headers = {"Authorization": f'Bearer {os.environ["GENIUS_API_KEY"]}'}
+    headers = {
+        "Authorization": f"Bearer H-KtNuYpHYXoBJqkt_uScjLamVMBmPOUqinXD2fAS9ictcy2c83ZeeCUHPJticwe"
+    }
     params = {"q": song}
 
     async with aiohttp.ClientSession() as session:
@@ -569,7 +698,7 @@ async def dog():
             if resp.status != 200:
                 return {
                     "success": 0,
-                    "data": {"errormessage": "Couldn't fetch the meme!"},
+                    "data": {"errormessage": "Couldn't fetch the dog!"},
                 }
             else:
                 meme_bytes = await resp.read()
@@ -585,7 +714,7 @@ async def cat():
             if resp.status != 200:
                 return {
                     "success": 0,
-                    "data": {"errormessage": "Couldn't fetch the meme!"},
+                    "data": {"errormessage": "Couldn't fetch the cat!"},
                 }
             else:
                 meme_bytes = await resp.read()
@@ -601,7 +730,7 @@ async def fox():
             if resp.status != 200:
                 return {
                     "success": 0,
-                    "data": {"errormessage": "Couldn't fetch the meme!"},
+                    "data": {"errormessage": "Couldn't fetch the fox!"},
                 }
             else:
                 meme_bytes = await resp.read()
