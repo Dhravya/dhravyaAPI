@@ -249,36 +249,46 @@ async def wyr(simple: Optional[str] = "False"):
 
 
 @app.get("/truthordare")
-async def truthordare(type: str, simple: Optional[str] = "False"):
-    """Returns a Truth or Dare (depending on ?type)"""
-    if type == "truth":
-        await do_statistics("truthordare")
-        async with aiofiles.open("./data/txt/truth.txt", "r", encoding="utf8") as f:
-            data = await f.readlines()
-        question = data[random.randrange(0, len(data))][:-1]
+async def truthordare(simple: Optional[str] = "False"):
+    """Returns a Truth and Dare."""
+    await do_statistics("truthordare")
+    async with aiofiles.open("./data/txt/truth.txt", "r", encoding="utf8") as f:
+        data = await f.readlines()
+    question = data[random.randrange(0, len(data))][:-1]
 
-        if simple == "true":
-            return PlainTextResponse(f"{question}")
-        return {"success": 1, "data": {"Truth": question}}
-    if type == "dare":
-        await do_statistics("truthordare")
-        async with aiofiles.open("./data/txt/dare.txt", "r", encoding="utf8") as f:
-            data = await f.readlines()
-        question = data[random.randrange(0, len(data))][:-1]
+    async with aiofiles.open("./data/txt/dare.txt", "r", encoding="utf8") as f:
+        data = await f.readlines()
+    question2 = data[random.randrange(0, len(data))][:-1]
 
-        if simple == "true":
-            return PlainTextResponse(f"{question}")
-        return {"success": 1, "data": {"Dare": question}}
-    else:
-        return JSONResponse(
-            status_code=404,
-            content={
-                "success": 0,
-                "data": {
-                    "errormessage": "That is not either Truth or Dare!",
-                },
-            },
-        )
+    if simple == "true":
+        return PlainTextResponse(f"{question} - {question2}")
+    return {"success": 1, "data": {"Truth": question, "Dare": question2}}
+
+
+@app.get("/truth")
+async def truth(simple: Optional[str] = "False"):
+    """Returns a Truth."""
+    await do_statistics("truthordare")
+    async with aiofiles.open("./data/txt/truth.txt", "r", encoding="utf8") as f:
+        data = await f.readlines()
+    question = data[random.randrange(0, len(data))[:-1]]
+
+    if simple == "true":
+        return PlainTextResponse(f"{question}")
+    return {"success": 1, "data": {"Truth": question}}
+
+
+@app.get("/dare")
+async def truth(simple: Optional[str] = "False"):
+    """Returns a Dare."""
+    await do_statistics("truthordare")
+    async with aiofiles.open("./data/txt/dare.txt", "r", encoding="utf8") as f:
+        data = await f.readlines()
+    question = data[random.randrange(0, len(data))[:-1]]
+
+    if simple == "true":
+        return PlainTextResponse(f"{question}")
+    return {"success": 1, "data": {"Dare": question}}
 
 
 @app.get("/joke")
@@ -379,11 +389,13 @@ async def lyrics(song: str, simple: Optional[str] = "False"):
             (song,),
         )
         data = await cursor.fetchall()
-        print(data[0][1])
+        o = data
+        notempty = bool(o)
         if data is not None:
-            if simple == "true":
-                return PlainTextResponse(data[0][1])
-            return {"success": 1, "data": {"lyrics": data[0][1]}}
+            if notempty is True:
+                if simple == "true":
+                    return PlainTextResponse(data[0][1])
+                return {"success": 1, "data": {"lyrics": data[0][1]}}
 
     async with aiohttp.ClientSession() as session:
         async with session.get(
@@ -686,7 +698,7 @@ async def dog():
             if resp.status != 200:
                 return {
                     "success": 0,
-                    "data": {"errormessage": "Couldn't fetch the meme!"},
+                    "data": {"errormessage": "Couldn't fetch the dog!"},
                 }
             else:
                 meme_bytes = await resp.read()
@@ -702,7 +714,7 @@ async def cat():
             if resp.status != 200:
                 return {
                     "success": 0,
-                    "data": {"errormessage": "Couldn't fetch the meme!"},
+                    "data": {"errormessage": "Couldn't fetch the cat!"},
                 }
             else:
                 meme_bytes = await resp.read()
@@ -718,7 +730,7 @@ async def fox():
             if resp.status != 200:
                 return {
                     "success": 0,
-                    "data": {"errormessage": "Couldn't fetch the meme!"},
+                    "data": {"errormessage": "Couldn't fetch the fox!"},
                 }
             else:
                 meme_bytes = await resp.read()

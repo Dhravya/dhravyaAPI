@@ -1,13 +1,13 @@
 {
-    "8ball": 55,
+    "8ball": 68,
     "age": 2,
-    "bored": 20,
+    "bored": 21,
     "numberfact": 13,
     "randomuser": 11,
     "meme": 6,
     "stats": 28,
-    "cat": 33,
-    "single_meme": 441,
+    "cat": 35,
+    "single_meme": 442,
     "qrcode": 379,
     "ascii": 1,
     "mcstatus": 1,
@@ -16,19 +16,14 @@
     "mealsome": 50,
     "headache": 23,
     "itsretarded": 6,
-    "wyr": 6,
+    "wyr": 7,
     "topic": 55,
-<<<<<<< HEAD
     "song_info": 5,
     "dog": 118,
-    "joke": 11,
-    "compliment": 23,
-=======
-    "song_info": 4,
-    "dog": 111,
-    "joke": 8,
-    "compliment": 22,
->>>>>>> 9726257d9c7bd2291d98fe4ac685d2312dde399b
+    "joke": 12,
+    "compliment": 24,
     "fox": 13,
-    "waifu": 7
+    "waifu": 7,
+    "neverhaveiever": 1,
+    "truthordare": 4
 }
