@@ -271,7 +271,7 @@ async def truth(simple: Optional[str] = "False"):
     await do_statistics("truthordare")
     async with aiofiles.open("./data/txt/truth.txt", "r", encoding="utf8") as f:
         data = await f.readlines()
-    question = data[random.randrange(0, len(data))[:-1]]
+    question = data[random.randrange(0, len(data))][:-1]
 
     if simple == "true":
         return PlainTextResponse(f"{question}")
@@ -284,7 +284,7 @@ async def truth(simple: Optional[str] = "False"):
     await do_statistics("truthordare")
     async with aiofiles.open("./data/txt/dare.txt", "r", encoding="utf8") as f:
         data = await f.readlines()
-    question = data[random.randrange(0, len(data))[:-1]]
+    question = data[random.randrange(0, len(data))][:-1]
 
     if simple == "true":
         return PlainTextResponse(f"{question}")
