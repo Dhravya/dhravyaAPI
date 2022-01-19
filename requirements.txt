@@ -8,4 +8,4 @@ lyrics_extractor
 dotenv
 aiofiles
 aiohttp
-googletrans
+googletrans==3.1.0a0

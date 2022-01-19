@@ -348,16 +348,29 @@ async def topic(simple: Optional[str] = "False"):
 
 # Initialising the Translator
 translator = googletrans.Translator()
+
+
 @app.get("/translate")
-async def translate(text: str, from_lang:str, to_lang:str = "en", simple: Optional[str] = "False"):
+async def translate(
+    text: str, from_lang: str, to_lang: str = "en", simple: Optional[str] = "False"
+):
     """Returns a translated text"""
-    if not googletrans.LANGCODES.keys().__contains__(from_lang):
-        return {"success": 0, "data": {"errormessage": "Invalid language! Language should be in the available languages.", "available_languages": googletrans.LANGCODES}}
+    if not from_lang in googletrans.LANGCODES.values():
+        return {
+            "success": 0,
+            "data": {
+                "errormessage": "Invalid language! Language should be in the available languages.",
+                "available_languages": googletrans.LANGCODES,
+            },
+        }
+
     await do_statistics("translate")
     result = translator.translate(text, src=from_lang, dest=to_lang)
+    result = result.text
     if simple == "true":
-        return PlainTextResponse(result.text)
-    return {"success": 1, "data": {"Translation": result.text}} 
+        return PlainTextResponse(result)
+    return {"success": 1, "data": {"Translation": result}}
+
 
 #!#################################################
 # * ASCII
