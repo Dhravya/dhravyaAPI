@@ -23,12 +23,12 @@ from fastapi.responses import (
     JSONResponse,
 )
 
-from bs4 import BeautifulSoup
 from mcstatus import MinecraftServer
 import pyfiglet
 import qrcode
 from qrcode.image.styledpil import StyledPilImage
 import MemePy
+import googletrans
 
 from extras.qr_stuff import _styles
 from extras.meme_fetcher import get_meme, topics_accepted
@@ -228,7 +228,7 @@ async def single_meme():
 
 
 #!#################################################
-# * Joke, WYR, etc generators
+# * TEXT-BASED | Joke, WYR, etc generators
 #!#################################################
 
 
@@ -345,6 +345,19 @@ async def topic(simple: Optional[str] = "False"):
         return PlainTextResponse(e)
     return {"success": 1, "data": {"Topic": topic}}
 
+
+# Initialising the Translator
+translator = googletrans.Translator()
+@app.get("/translate")
+async def translate(text: str, from_lang:str, to_lang:str = "en", simple: Optional[str] = "False"):
+    """Returns a translated text"""
+    if not googletrans.LANGCODES.keys().__contains__(from_lang):
+        return {"success": 0, "data": {"errormessage": "Invalid language! Language should be in the available languages.", "available_languages": googletrans.LANGCODES}}
+    await do_statistics("translate")
+    result = translator.translate(text, src=from_lang, dest=to_lang)
+    if simple == "true":
+        return PlainTextResponse(result.text)
+    return {"success": 1, "data": {"Translation": result.text}} 
 
 #!#################################################
 # * ASCII
