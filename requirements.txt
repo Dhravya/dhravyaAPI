@@ -1,0 +1,12 @@
+fastapi
+memepy
+pyfiglet
+mcstatus
+qrcode
+Pillow
+lyrics_extractor
+dotenv
+aiofiles
+aiohttp
+googletrans==3.1.0a0
+numpy
