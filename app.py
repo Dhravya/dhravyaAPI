@@ -293,18 +293,18 @@ async def roast(simple: Optional[str] = "False"):
 @app.get("/trivia")
 async def trivia(simple: Optional[str] = "False"):
     """Returns a Trivia Question."""
-    do_statistics("trivia")
-    async with aiohttp.ClientSession() as session:
-        async with session.get(
-            "https://www.randomtriviagenerator.com/questions"
-        ) as resp:
-            data = await resp.json()
-            if simple.lower() == "true":
-                return PlainTextResponse(f"{data['question']}\n{data['answer']}")
-            return {
-                "success": 1,
-                "data": {"Question": data["question"], "Answer": data["answer"]},
-            }
+    await do_statistics("trivia")
+    async with aiofiles.open("./data/txt/trivia.txt", "r", encoding="utf8") as f:
+        data = await f.readlines()
+    trivia = data[random.randrange(0, len(data))][:-1]
+    trivia = trivia.split(" | ")
+
+    if simple.lower() == "true":
+        return PlainTextResponse(f"{trivia[0]}\n{trivia[1]}")
+    return {
+        "success": 1,
+        "data": {"Question": trivia[0], "Answer": trivia[1]},
+    }
 
 
 @app.get("/truth")
