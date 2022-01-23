@@ -290,6 +290,23 @@ async def roast(simple: Optional[str] = "False"):
     return {"success": 1, "data": {"Roast": roast}}
 
 
+@app.get("/trivia")
+async def trivia(simple: Optional[str] = "False"):
+    """Returns a Trivia Question."""
+    do_statistics("trivia")
+    async with aiohttp.ClientSession() as session:
+        async with session.get(
+            "https://www.randomtriviagenerator.com/questions"
+        ) as resp:
+            data = await resp.json()
+            if simple.lower() == "true":
+                return PlainTextResponse(f"{data['question']}\n{data['answer']}")
+            return {
+                "success": 1,
+                "data": {"Question": data["question"], "Answer": data["answer"]},
+            }
+
+
 @app.get("/truth")
 async def truth(simple: Optional[str] = "False"):
     """Returns a Truth."""
