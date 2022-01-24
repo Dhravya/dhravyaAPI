@@ -6,10 +6,13 @@
     "dog": 17,
     "topic": 8,
     "song_info": 7,
-    "8ball": 8,
-    "stats": 1,
+    "8ball": 15,
+    "stats": 2,
     "single_meme": 4,
     "compliment": 5,
     "truthordare": 3,
-    "translate": 5
+    "translate": 5,
+    "roast": 8,
+    "fact": 8,
+    "trivia": 11
 }

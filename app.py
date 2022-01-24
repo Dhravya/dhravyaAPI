@@ -20,7 +20,6 @@ from fastapi.responses import (
     StreamingResponse,
     RedirectResponse,
     PlainTextResponse,
-    JSONResponse,
 )
 
 from mcstatus import MinecraftServer
@@ -124,7 +123,7 @@ async def eightball(simple: Optional[str] = "False"):
     ]
     await do_statistics("8ball")
 
-    if simple == "true":
+    if simple.lower() == "true":
         return PlainTextResponse(random.choice(answers))
     return {"success": 1, "data": {"answer": random.choice(answers)}}
 
@@ -240,7 +239,7 @@ async def wyr(simple: Optional[str] = "False"):
     question = data[random.randrange(0, len(data))][:-2].split(" or ")
 
     await do_statistics("wyr")
-    if simple == "true":
+    if simple.lower() == "true":
         question[0] = question[0].capitalize()
         question[1] = question[1].capitalize()
         e = f"{question[0]} or {question[1]}?"
@@ -260,9 +259,52 @@ async def truthordare(simple: Optional[str] = "False"):
         data = await f.readlines()
     question2 = data[random.randrange(0, len(data))][:-1]
 
-    if simple == "true":
+    if simple.lower() == "true":
         return PlainTextResponse(f"{question} - {question2}")
     return {"success": 1, "data": {"Truth": question, "Dare": question2}}
+
+
+@app.get("/fact")
+async def fact(simple: Optional[str] = "False"):
+    """Returns a Fact."""
+    await do_statistics("fact")
+    async with aiofiles.open("./data/txt/facts.txt", "r", encoding="utf8") as f:
+        data = await f.readlines()
+    fact = data[random.randrange(0, len(data))][:-1]
+
+    if simple.lower() == "true":
+        return PlainTextResponse(f"{fact}")
+    return {"success": 1, "data": {"Fact": fact}}
+
+
+@app.get("/roast")
+async def roast(simple: Optional[str] = "False"):
+    """Returns a Roast."""
+    await do_statistics("roast")
+    async with aiofiles.open("./data/txt/roasts.txt", "r", encoding="utf8") as f:
+        data = await f.readlines()
+    roast = data[random.randrange(0, len(data))][:-1]
+
+    if simple.lower() == "true":
+        return PlainTextResponse(f"{roast}")
+    return {"success": 1, "data": {"Roast": roast}}
+
+
+@app.get("/trivia")
+async def trivia(simple: Optional[str] = "False"):
+    """Returns a Trivia Question."""
+    await do_statistics("trivia")
+    async with aiofiles.open("./data/txt/trivia.txt", "r", encoding="utf8") as f:
+        data = await f.readlines()
+    trivia = data[random.randrange(0, len(data))][:-1]
+    trivia = trivia.split(" | ")
+
+    if simple.lower() == "true":
+        return PlainTextResponse(f"{trivia[0]}\n{trivia[1]}")
+    return {
+        "success": 1,
+        "data": {"Question": trivia[0], "Answer": trivia[1]},
+    }
 
 
 @app.get("/truth")
@@ -273,7 +315,7 @@ async def truth(simple: Optional[str] = "False"):
         data = await f.readlines()
     question = data[random.randrange(0, len(data))][:-1]
 
-    if simple == "true":
+    if simple.lower() == "true":
         return PlainTextResponse(f"{question}")
     return {"success": 1, "data": {"Truth": question}}
 
@@ -286,7 +328,7 @@ async def truth(simple: Optional[str] = "False"):
         data = await f.readlines()
     question = data[random.randrange(0, len(data))][:-1]
 
-    if simple == "true":
+    if simple.lower() == "true":
         return PlainTextResponse(f"{question}")
     return {"success": 1, "data": {"Dare": question}}
 
@@ -299,7 +341,7 @@ async def joke(simple: Optional[str] = "False"):
     joke = data[random.randrange(0, len(data))][:-1]
 
     await do_statistics("joke")
-    if simple == "true":
+    if simple.lower() == "true":
         return PlainTextResponse(joke)
     return {"success": 1, "data": {"Joke": joke}}
 
@@ -312,7 +354,7 @@ async def compliment(simple: Optional[str] = "False"):
     compliment = data[random.randrange(0, len(data))][:-1]
 
     await do_statistics("compliment")
-    if simple == "true":
+    if simple.lower() == "true":
         return PlainTextResponse(compliment)
     return {"success": 1, "data": {"Compliment": compliment}}
 
@@ -327,7 +369,7 @@ async def neverhaveiever(simple: Optional[str] = "False"):
     nhie = data[random.randrange(0, len(data))][:-1]
 
     await do_statistics("neverhaveiever")
-    if simple == "true":
+    if simple.lower() == "true":
         return PlainTextResponse(nhie)
     return {"success": 1, "data": {"Topic": nhie}}
 
@@ -340,7 +382,7 @@ async def topic(simple: Optional[str] = "False"):
     topic = data[random.randrange(0, len(data))][:-2]
 
     await do_statistics("topic")
-    if simple == "true":
+    if simple.lower() == "true":
         e = f"{topic}?"
         return PlainTextResponse(e)
     return {"success": 1, "data": {"Topic": topic}}
@@ -367,7 +409,7 @@ async def translate(
     await do_statistics("translate")
     result = translator.translate(text, src=from_lang, dest=to_lang)
     result = result.text
-    if simple == "true":
+    if simple.lower() == "true":
         return PlainTextResponse(result)
     return {"success": 1, "data": {"Translation": result}}
 
@@ -419,7 +461,7 @@ async def lyrics(song: str, simple: Optional[str] = "False"):
         notempty = bool(o)
         if data is not None:
             if notempty is True:
-                if simple == "true":
+                if simple.lower() == "true":
                     return PlainTextResponse(data[0][1])
                 return {"success": 1, "data": {"lyrics": data[0][1]}}
 
@@ -475,7 +517,7 @@ async def lyrics(song: str, simple: Optional[str] = "False"):
         )
         await db.commit()
 
-    if simple == "true":
+    if simple.lower() == "true":
         return PlainTextResponse(lyrics)
     return {"success": 1, "data": {"lyrics": lyrics}}
 
@@ -488,7 +530,7 @@ async def crypto_info(crypto: str, simple: Optional[str] = "False"):
     async with aiohttp.ClientSession() as resp:
         async with resp.get(url) as resp:
             data = await resp.json()
-            if simple == "true":
+            if simple.lower() == "true":
                 return PlainTextResponse(
                     f"{data['name']} is worth {data['price_usd']} USD"
                 )
