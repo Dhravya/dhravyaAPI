@@ -303,7 +303,7 @@ async def trivia(simple: Optional[str] = "False"):
         return PlainTextResponse(f"{trivia[0]}\n{trivia[1]}")
     return {
         "success": 1,
-        "data": {"Question": trivia[0], "Answer": trivia[1]},
+        "data": [{"Question": trivia[0], "Answer": trivia[1]}],
     }
 
 
