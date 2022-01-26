@@ -5,7 +5,8 @@ mcstatus
 qrcode
 Pillow
 lyrics_extractor
-dotenv
+python-dotenv
 aiofiles
 aiohttp
+aiosqlite
 googletrans==3.1.0a0
