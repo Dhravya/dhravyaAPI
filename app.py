@@ -389,7 +389,7 @@ async def topic(simple: Optional[str] = "False"):
     return {"success": 1, "data": {"Topic": topic}}
 
 @app.get("/owofy")
-async def owofy(text: Union[str, Sequence, None] = "No text provided", wanky: Optional[str] = "False", simple: Optional[str] = "False"):
+async def owofy(text: Optional[str] = "No text provided", wanky: Optional[str] = "False", simple: Optional[str] = "False"):
     # await do_statistics("owofy")
     wanky = False if wanky.lower() == "false" else True
     owo_text = owo_converter(text=text, wanky=wanky)
