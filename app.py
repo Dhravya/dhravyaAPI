@@ -34,6 +34,7 @@ from extras.meme_fetcher import get_meme, topics_accepted
 from extras.memegenerator import make_meme
 from extras.do_stats import do_statistics
 from extras.owofy import owofy as owo_converter
+from extras.britishify import strong_british_accent as british_converter
 
 # Defining apps and configs.
 
@@ -390,7 +391,7 @@ async def topic(simple: Optional[str] = "False"):
 
 @app.get("/owofy")
 async def owofy(text: Optional[str] = "No text provided", wanky: Optional[str] = "False", simple: Optional[str] = "False"):
-    # await do_statistics("owofy")
+    await do_statistics("owofy")
     wanky = False if wanky.lower() == "false" else True
     owo_text = owo_converter(text=text, wanky=wanky)
 
@@ -398,6 +399,16 @@ async def owofy(text: Optional[str] = "No text provided", wanky: Optional[str] =
         return PlainTextResponse(owo_text)
     
     return {"success": 1, "data": {"wanky": int(wanky), "owo_text": owo_text}}
+
+@app.get("/britify")
+async def britify(text: Optional[str] = "No text provided", simple: Optional[str] = "False"):
+    await do_statistics("britify")
+    british_text = british_converter(text=text)
+
+    if simple.lower() == "true" and isinstance(text, str):
+        return PlainTextResponse(british_text)
+    
+    return {"success": 1, "data": {"british_text": british_text}}
 
 
 # Initialising the Translator
