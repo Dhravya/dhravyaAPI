@@ -97,7 +97,7 @@ async def docs():
 
 
 @app.get("/8ball")
-async def eightball(simple: Optional[str] = "False"):
+async def eightball():
 
     answers = [
         "It is certain",
@@ -122,9 +122,6 @@ async def eightball(simple: Optional[str] = "False"):
         "Very doubtful",
     ]
     await do_statistics("8ball")
-
-    if simple.lower() == "true":
-        return PlainTextResponse(random.choice(answers))
     return {"success": 1, "data": {"answer": random.choice(answers)}}
 
 
@@ -204,7 +201,7 @@ async def meme(topic: str):
             "score": meme["score"],
             "id": meme["id"],
             "selftext": meme["selftext"],
-            "is_nsfw": meme["over_18"],
+            "is_nsfw": meme["over_18"]
         },
     }
 
@@ -232,23 +229,16 @@ async def single_meme():
 
 
 @app.get("/wyr")
-async def wyr(simple: Optional[str] = "False"):
+async def wyr():
     """Returns a would you rather question"""
     async with aiofiles.open("./data/txt/wyr.txt", "r") as f:
         data = await f.readlines()
     question = data[random.randrange(0, len(data))][:-2].split(" or ")
-
-    await do_statistics("wyr")
-    if simple.lower() == "true":
-        question[0] = question[0].capitalize()
-        question[1] = question[1].capitalize()
-        e = f"{question[0]} or {question[1]}?"
-        return PlainTextResponse(e)
     return {"success": 1, "data": {"Would you rather": question}}
 
 
 @app.get("/truthordare")
-async def truthordare(simple: Optional[str] = "False"):
+async def truthordare():
     """Returns a Truth and Dare."""
     await do_statistics("truthordare")
     async with aiofiles.open("./data/txt/truth.txt", "r", encoding="utf8") as f:
@@ -258,79 +248,61 @@ async def truthordare(simple: Optional[str] = "False"):
     async with aiofiles.open("./data/txt/dare.txt", "r", encoding="utf8") as f:
         data = await f.readlines()
     question2 = data[random.randrange(0, len(data))][:-1]
-
-    if simple.lower() == "true":
-        return PlainTextResponse(f"{question} - {question2}")
-    return {"success": 1, "data": {"Truth": question, "Dare": question2}}
+    return {"success": 1, "data": {"truth": question, "dare": question2}}
 
 
 @app.get("/fact")
-async def fact(simple: Optional[str] = "False"):
+async def fact():
     """Returns a Fact."""
     await do_statistics("fact")
     async with aiofiles.open("./data/txt/facts.txt", "r", encoding="utf8") as f:
         data = await f.readlines()
     fact = data[random.randrange(0, len(data))][:-1]
-
-    if simple.lower() == "true":
-        return PlainTextResponse(f"{fact}")
-    return {"success": 1, "data": {"Fact": fact}}
+    return {"success": 1, "data": {"fact": fact}}
 
 
 @app.get("/roast")
-async def roast(simple: Optional[str] = "False"):
+async def roast():
     """Returns a Roast."""
     await do_statistics("roast")
     async with aiofiles.open("./data/txt/roasts.txt", "r", encoding="utf8") as f:
         data = await f.readlines()
     roast = data[random.randrange(0, len(data))][:-1]
-
-    if simple.lower() == "true":
-        return PlainTextResponse(f"{roast}")
-    return {"success": 1, "data": {"Roast": roast}}
+    return {"success": 1, "data": {"roast": roast}}
 
 
 @app.get("/trivia")
-async def trivia(simple: Optional[str] = "False"):
+async def trivia():
     """Returns a Trivia Question."""
     await do_statistics("trivia")
     async with aiofiles.open("./data/txt/trivia.txt", "r", encoding="utf8") as f:
         data = await f.readlines()
     trivia = data[random.randrange(0, len(data))][:-1]
     trivia = trivia.split(" | ")
-
-    if simple.lower() == "true":
-        return PlainTextResponse(f"{trivia[0]}\n{trivia[1]}")
     return {
         "success": 1,
-        "data": [{"Question": trivia[0], "Answer": trivia[1]}],
+        "data": [{"question": trivia[0], "answer": trivia[1]}],
     }
 
 
 @app.get("/truth")
-async def truth(simple: Optional[str] = "False"):
+async def truth():
     """Returns a Truth."""
     await do_statistics("truthordare")
     async with aiofiles.open("./data/txt/truth.txt", "r", encoding="utf8") as f:
         data = await f.readlines()
     question = data[random.randrange(0, len(data))][:-1]
-
-    if simple.lower() == "true":
-        return PlainTextResponse(f"{question}")
-    return {"success": 1, "data": {"Truth": question}}
+    return {"success": 1, "data": {"truth": question}}
 
 
 @app.get("/dare")
-async def truth(simple: Optional[str] = "False"):
+async def truth():
     """Returns a Dare."""
     await do_statistics("truthordare")
     async with aiofiles.open("./data/txt/dare.txt", "r", encoding="utf8") as f:
         data = await f.readlines()
     question = data[random.randrange(0, len(data))][:-1]
-
-    if simple.lower() == "true":
-        return PlainTextResponse(f"{question}")
-    return {"success": 1, "data": {"Dare": question}}
+    return {"success": 1, "data": {"dare": question}}
 
 
 @app.get("/joke")
