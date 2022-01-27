@@ -6,7 +6,7 @@ gunicorn app:app -w 1 -k uvicorn.workers.UvicornWorker -b "127.0.0.1:8000" --dae
 """
 
 import json
-from typing import Optional
+from typing import Optional, Sequence, Union
 import aiofiles
 import aiohttp
 import random
@@ -33,6 +33,7 @@ from extras.qr_stuff import _styles
 from extras.meme_fetcher import get_meme, topics_accepted
 from extras.memegenerator import make_meme
 from extras.do_stats import do_statistics
+from extras.owofy import owofy as owo_converter
 
 # Defining apps and configs.
 
@@ -386,6 +387,17 @@ async def topic(simple: Optional[str] = "False"):
         e = f"{topic}?"
         return PlainTextResponse(e)
     return {"success": 1, "data": {"Topic": topic}}
+
+@app.get("/owofy")
+async def owofy(text: Union[str, Sequence, None] = "No text provided", wanky: Optional[str] = "False", simple: Optional[str] = "False"):
+    # await do_statistics("owofy")
+    wanky = False if wanky.lower() == "false" else True
+    owo_text = owo_converter(text=text, wanky=wanky)
+
+    if simple.lower() == "true" and isinstance(text, str):
+        return PlainTextResponse(owo_text)
+    
+    return {"success": 1, "data": {"wanky": int(wanky), "owo_text": owo_text}}
 
 
 # Initialising the Translator
