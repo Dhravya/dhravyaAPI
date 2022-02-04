@@ -6,12 +6,11 @@ gunicorn app:app -w 1 -k uvicorn.workers.UvicornWorker -b "127.0.0.1:8000" --dae
 """
 
 import json
-from typing import Optional, Sequence, Union
+from typing import Optional
 import aiofiles
 import aiohttp
 import random
 import io
-import os
 import aiosqlite
 
 from fastapi import FastAPI
