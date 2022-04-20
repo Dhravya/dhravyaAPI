@@ -97,7 +97,7 @@ async def make_level_card(
     # For every length of the level, we need to move the image to the left
     for i in range(len(str(exp))):
         exp_x_coord -= 5
-    font = ImageFont.truetype("./data\fonts\ceribri.ttf", size=20)
+    font = ImageFont.truetype("./data/fonts/ceribri.ttf", size=20)
     draw = ImageDraw.Draw(template)
     draw.text((exp_x_coord, 149), exp, (255, 255, 255), font=font)
 

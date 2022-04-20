@@ -13,12 +13,12 @@ def make_meme(topString, bottomString, filename):
 
 	# find biggest font size that works
 	fontSize = int(imageSize[1]/5)
-	font = ImageFont.truetype(r".\data\fonts\impact.ttf", fontSize)
+	font = ImageFont.truetype("./data/fonts/impact.ttf", fontSize)
 	topTextSize = font.getsize(topString)
 	bottomTextSize = font.getsize(bottomString)
 	while topTextSize[0] > imageSize[0]-20 or bottomTextSize[0] > imageSize[0]-20:
 		fontSize = fontSize - 1
-		font = ImageFont.truetype(r".\data\fonts\impact.ttf", fontSize)
+		font = ImageFont.truetype("./data/fonts/impact.ttf", fontSize)
 		topTextSize = font.getsize(topString)
 		bottomTextSize = font.getsize(bottomString)
 
