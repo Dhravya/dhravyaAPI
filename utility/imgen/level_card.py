@@ -32,14 +32,14 @@ async def make_level_card(
     template.paste(user_pfp, (58, 64), user_pfp)
 
     # Adding the username and discriminator
-    font = ImageFont.truetype(r".\data\fonts\ceribri.ttf", size=34)
+    font = ImageFont.truetype("./data/fonts/ceribri.ttf", size=34)
     draw = ImageDraw.Draw(template)
     draw.text((200, 47), username, (252, 232, 158), font=font)
     print("something")
     # Discriminator
     if not discriminator.startswith("#"):
         discriminator = "#" + discriminator
-    font = ImageFont.truetype(r".\data\fonts\ceribri.ttf", size=30)
+    font = ImageFont.truetype("./data/fonts/ceribri.ttf", size=30)
     draw = ImageDraw.Draw(template)
     decider = len(username) * 21
     move_image_down = False
@@ -62,7 +62,7 @@ async def make_level_card(
         server_font = 15
     elif len(str(server_rank)) > 5:
         server_font = 20
-    font = ImageFont.truetype(r".\data\fonts\ceribri.ttf", size=server_font)
+    font = ImageFont.truetype("./data/fonts/ceribri.ttf", size=server_font)
     draw = ImageDraw.Draw(template)
     server_x_coords = 270
     # Some weird shit to make the server rank fit in the box
@@ -79,7 +79,7 @@ async def make_level_card(
             weekly_font = 15
         elif len(str(weekly_rank)) > 5:
             weekly_font = 20
-        font = ImageFont.truetype(r".\data\fonts\ceribri.ttf", size=weekly_font)
+        font = ImageFont.truetype("./data/fonts/ceribri.ttf", size=weekly_font)
         draw = ImageDraw.Draw(template)
         draw.text((375, 146), weekly_rank, (255, 255, 255), font=font)
 
@@ -88,7 +88,7 @@ async def make_level_card(
     # For every length of the level, we need to move the image to the left
     for i in range(len(str(level))):
         level_x_coord -= 5
-    font = ImageFont.truetype(r".\data\fonts\ceribri.ttf", size=20)
+    font = ImageFont.truetype("./data\fonts\ceribri.ttf", size=20)
     draw = ImageDraw.Draw(template)
     draw.text((level_x_coord, 55), level, (252, 232, 158), font=font)
 
@@ -97,7 +97,7 @@ async def make_level_card(
     # For every length of the level, we need to move the image to the left
     for i in range(len(str(exp))):
         exp_x_coord -= 5
-    font = ImageFont.truetype(r".\data\fonts\ceribri.ttf", size=20)
+    font = ImageFont.truetype("./data\fonts\ceribri.ttf", size=20)
     draw = ImageDraw.Draw(template)
     draw.text((exp_x_coord, 149), exp, (255, 255, 255), font=font)
 
@@ -107,7 +107,7 @@ async def make_level_card(
         # For every length of the level, we need to move the image to the left
         for i in range(len(str(max_exp))):
             max_exp_x_cord -= 5
-        font = ImageFont.truetype(r".\data\fonts\ceribri.ttf", size=15)
+        font = ImageFont.truetype("./data/fonts/ceribri.ttf", size=15)
         draw = ImageDraw.Draw(template)
         draw.text((max_exp_x_cord, 153), "/" + max_exp, "#36393f", font=font)
 
